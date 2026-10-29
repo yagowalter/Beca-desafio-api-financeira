@@ -1,0 +1,16 @@
+# IntelliJ IDEA
+.idea/
+*.iml
+
+# Maven
+**/target/
+
+# Ambiente e segredos
+.env
+.env.*
+!.env.example
+
+# Logs e sistema operacional
+*.log
+.DS_Store
+Thumbs.db
