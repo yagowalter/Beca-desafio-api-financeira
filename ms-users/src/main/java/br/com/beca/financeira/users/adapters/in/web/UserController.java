@@ -1,5 +1,8 @@
-package br.com.beca.financeira.users.api;
+package br.com.beca.financeira.users.adapters.in.web;
 
+import br.com.beca.financeira.users.adapters.in.web.dto.CreateUserRequest;
+import br.com.beca.financeira.users.adapters.in.web.dto.UpdateUserRequest;
+import br.com.beca.financeira.users.adapters.in.web.dto.UserResponse;
 import br.com.beca.financeira.users.application.port.in.UserUseCase;
 import br.com.beca.financeira.users.domain.User;
 import jakarta.validation.Valid;

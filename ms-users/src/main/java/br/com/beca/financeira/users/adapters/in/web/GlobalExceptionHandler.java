@@ -1,4 +1,4 @@
-package br.com.beca.financeira.users.api;
+package br.com.beca.financeira.users.adapters.in.web;
 
 import br.com.beca.financeira.users.application.service.DuplicateResourceException;
 import br.com.beca.financeira.users.application.service.ResourceNotFoundException;
