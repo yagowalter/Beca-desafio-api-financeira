@@ -1,4 +1,4 @@
-package br.com.beca.financeira.ms_transactions;
+package br.com.beca.financeira.transactions;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
