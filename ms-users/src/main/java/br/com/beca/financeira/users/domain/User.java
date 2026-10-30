@@ -1,24 +1,19 @@
 package br.com.beca.financeira.users.domain;
-import jakarta.persistence.*;
 
-@Entity
-@Table(name = "users")
 public class User {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    @Column(nullable = false, length = 100)
+    private final Long id;
     private String name;
-
-    @Column(nullable = false, unique = true, length = 150)
     private String email;
 
-    protected User() {
+    // Criação de usuário novo, ainda sem ID do banco
+    public User(String name, String email) {
+        this(null, name, email);
     }
 
-    public User(String name, String email) {
+    // Reconstrução de usuário já persistido
+    public User(Long id, String name, String email) {
+        this.id = id;
         this.name = name;
         this.email = email;
     }
