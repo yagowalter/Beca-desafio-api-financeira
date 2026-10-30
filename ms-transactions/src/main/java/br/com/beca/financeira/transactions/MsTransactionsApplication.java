@@ -1,4 +1,4 @@
-package br.com.beca.financeira.ms_transactions;
+package br.com.beca.financeira.transactions;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
