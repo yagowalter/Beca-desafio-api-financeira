@@ -1,10 +1,10 @@
-package br.com.beca.financeira.users.api;
+package br.com.beca.financeira.users.adapters.in.web.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
-public class CreateUserRequest {
+public class UpdateUserRequest {
 
     @NotBlank
     @Size(max = 100)
@@ -15,10 +15,10 @@ public class CreateUserRequest {
     @Size(max = 150)
     private String email;
 
-    public CreateUserRequest() {
+    public UpdateUserRequest() {
     }
 
-    public CreateUserRequest(String name, String email) {
+    public UpdateUserRequest(String name, String email) {
         this.name = name;
         this.email = email;
     }
@@ -39,5 +39,3 @@ public class CreateUserRequest {
         this.email = email;
     }
 }
-
-

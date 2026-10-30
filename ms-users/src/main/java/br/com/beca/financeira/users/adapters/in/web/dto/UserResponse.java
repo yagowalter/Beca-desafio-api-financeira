@@ -1,4 +1,4 @@
-package br.com.beca.financeira.users.api;
+package br.com.beca.financeira.users.adapters.in.web.dto;
 
 public class UserResponse {
 
