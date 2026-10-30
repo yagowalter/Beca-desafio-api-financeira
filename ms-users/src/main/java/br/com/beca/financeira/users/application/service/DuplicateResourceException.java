@@ -1,4 +1,4 @@
-package br.com.beca.financeira.users.service;
+package br.com.beca.financeira.users.application.service;
 
 public class DuplicateResourceException extends RuntimeException {
 
