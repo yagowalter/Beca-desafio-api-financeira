@@ -38,9 +38,4 @@ public class TransactionPersistenceAdapter implements TransactionRepositoryPort 
         return transactionJpaRepository.findById(id).map(TransactionEntity::toDomain);
     }
 
-    @Override
-    public void deleteById(Long id) {
-        transactionJpaRepository.deleteById(id);
-    }
-
 }

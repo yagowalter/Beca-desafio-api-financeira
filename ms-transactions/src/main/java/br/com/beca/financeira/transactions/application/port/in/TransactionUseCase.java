@@ -19,12 +19,4 @@ public interface TransactionUseCase {
 
     Transaction findById(Long id);
 
-    Transaction update(
-            Long id,
-            String description,
-            BigDecimal amount,
-            TransactionType type
-    );
-
-    void delete(Long id);
 }

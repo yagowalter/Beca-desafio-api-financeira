@@ -12,6 +12,10 @@ public class Transaction {
     private BigDecimal amount;
     private TransactionType type;
     private LocalDateTime occurredAt;
+    private String category;
+    private Long destinationUserId;
+    private TransactionStatus status;
+    private String rejectionReason;
 
     public Transaction(Long userId, String description, BigDecimal amount, TransactionType type) {
 
@@ -22,6 +26,29 @@ public class Transaction {
         this.amount = amount;
         this.type = type;
         this.occurredAt = LocalDateTime.now();
+    }
+
+    public Transaction(
+            Long userId,
+            String description,
+            BigDecimal amount,
+            TransactionType type,
+            String category,
+            Long destinationUserId
+    ) {
+        this(userId, description, amount, type);
+
+        if (type == TransactionType.PURCHASE && (category == null || category.isBlank())) {
+            throw new IllegalArgumentException("Categoria é obrigatória para compras");
+        }
+
+        if (type == TransactionType.TRANSFER
+                && (destinationUserId == null || destinationUserId <= 0)) {
+            throw new IllegalArgumentException("Usuário de destino é obrigatório para transferências");
+        }
+
+        this.category = category;
+        this.destinationUserId = destinationUserId;
     }
 
     public Transaction(
@@ -49,6 +76,27 @@ public class Transaction {
         this.type = type;
         this.occurredAt = occurredAt;
     }
+
+    public Transaction(
+            Long id,
+            Long userId,
+            String description,
+            BigDecimal amount,
+            TransactionType type,
+            LocalDateTime occurredAt,
+            String category,
+            Long destinationUserId,
+            TransactionStatus status,
+            String rejectionReason
+    ) {
+        this(id, userId, description, amount, type, occurredAt);
+
+        this.category = category;
+        this.destinationUserId = destinationUserId;
+        this.status = status;
+        this.rejectionReason = rejectionReason;
+    }
+
 
     private void validate(
             Long userId, String description, BigDecimal amount, TransactionType type
@@ -94,17 +142,20 @@ public class Transaction {
         return occurredAt;
     }
 
-    public void update(
-            String description,
-            BigDecimal amount,
-            TransactionType type
-    ) {
-        validate(this.userId, description, amount, type);
-
-        this.description = description;
-        this.amount = amount;
-        this.type = type;
+    public String getCategory() {
+        return category;
     }
 
+    public Long getDestinationUserId() {
+        return destinationUserId;
+    }
+
+    public TransactionStatus getStatus() {
+        return status;
+    }
+
+    public String getRejectionReason() {
+        return rejectionReason;
+    }
 
 }
