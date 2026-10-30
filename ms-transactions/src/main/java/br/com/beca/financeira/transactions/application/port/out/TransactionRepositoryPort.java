@@ -13,5 +13,4 @@ public interface TransactionRepositoryPort {
 
     Optional<Transaction> findById(Long id);
 
-    void deleteById(Long id);
 }

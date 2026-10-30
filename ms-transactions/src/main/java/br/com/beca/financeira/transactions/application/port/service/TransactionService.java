@@ -44,19 +44,4 @@ public class TransactionService implements TransactionUseCase {
                 );
     }
 
-    @Override
-    public Transaction update(Long id, String description, BigDecimal amount, TransactionType type) {
-
-        Transaction transaction = findEntityById(id);
-
-        transaction.update(description, amount, type);
-
-        return transactionRepositoryPort.save(transaction);
-    }
-
-    @Override
-    public void delete(Long id) {
-        findEntityById(id);
-        transactionRepositoryPort.deleteById(id);
-    }
 }
