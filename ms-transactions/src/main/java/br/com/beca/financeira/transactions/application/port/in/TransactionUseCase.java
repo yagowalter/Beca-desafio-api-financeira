@@ -12,7 +12,9 @@ public interface TransactionUseCase {
             Long userId,
             String description,
             BigDecimal amount,
-            TransactionType type
+            TransactionType type,
+            String category,
+            Long destinationUserId
     );
 
     List<Transaction> findAll();

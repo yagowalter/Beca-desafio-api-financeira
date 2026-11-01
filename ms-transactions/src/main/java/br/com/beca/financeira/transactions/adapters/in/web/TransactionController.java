@@ -29,7 +29,9 @@ public class TransactionController {
                 request.getUserId(),
                 request.getDescription(),
                 request.getAmount(),
-                request.getType()
+                request.getType(),
+                request.getCategory(),
+                request.getDestinationUserId()
         );
         return ResponseEntity.status(HttpStatus.CREATED).body(transaction);
     }

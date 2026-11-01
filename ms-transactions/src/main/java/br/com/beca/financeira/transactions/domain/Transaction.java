@@ -17,15 +17,13 @@ public class Transaction {
     private TransactionStatus status;
     private String rejectionReason;
 
-    public Transaction(Long userId, String description, BigDecimal amount, TransactionType type) {
-
-        validate(userId, description, amount, type);
-
-        this.userId = userId;
-        this.description = description;
-        this.amount = amount;
-        this.type = type;
-        this.occurredAt = LocalDateTime.now();
+    public Transaction(
+            Long userId,
+            String description,
+            BigDecimal amount,
+            TransactionType type
+    ) {
+        this(userId, description, amount, type, null, null);
     }
 
     public Transaction(
@@ -36,17 +34,27 @@ public class Transaction {
             String category,
             Long destinationUserId
     ) {
-        this(userId, description, amount, type);
+        validate(userId, description, amount, type);
 
-        if (type == TransactionType.PURCHASE && (category == null || category.isBlank())) {
-            throw new IllegalArgumentException("Categoria é obrigatória para compras");
+        if (type == TransactionType.PURCHASE
+                && (category == null || category.isBlank())) {
+            throw new IllegalArgumentException(
+                    "Categoria é obrigatória para compras"
+            );
         }
 
         if (type == TransactionType.TRANSFER
                 && (destinationUserId == null || destinationUserId <= 0)) {
-            throw new IllegalArgumentException("Usuário de destino é obrigatório para transferências");
+            throw new IllegalArgumentException(
+                    "Usuário de destino é obrigatório para transferências"
+            );
         }
 
+        this.userId = userId;
+        this.description = description;
+        this.amount = amount;
+        this.type = type;
+        this.occurredAt = LocalDateTime.now();
         this.category = category;
         this.destinationUserId = destinationUserId;
     }
@@ -115,6 +123,34 @@ public class Transaction {
 
         if (type == null) {
             throw new IllegalArgumentException("Tipo da transação é obrigatório");
+        }
+    }
+
+    public void approve() {
+        ensureNotFinalized();
+
+        this.status = TransactionStatus.APPROVED;
+        this.rejectionReason = null;
+    }
+
+    public void reject(String reason) {
+        ensureNotFinalized();
+
+        if (reason == null || reason.isBlank()) {
+            throw new IllegalArgumentException(
+                    "Motivo da rejeição é obrigatório"
+            );
+        }
+
+        this.rejectionReason = reason;
+        this.status = TransactionStatus.REJECTED;
+    }
+
+    private void ensureNotFinalized() {
+        if (status != null) {
+            throw new IllegalStateException(
+                    "A transação ja foi finalizada"
+            );
         }
     }
 
