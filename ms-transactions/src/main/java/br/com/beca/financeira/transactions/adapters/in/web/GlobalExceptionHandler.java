@@ -66,4 +66,13 @@ public class GlobalExceptionHandler {
                 "Corpo da requisição inválido ou com valores desconhecidos"
         );
     }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ProblemDetail handleDomainValidation(IllegalArgumentException exception) {
+        return ProblemDetail.forStatusAndDetail(
+                HttpStatus.BAD_REQUEST,
+                exception.getMessage()
+        );
+    }
 }

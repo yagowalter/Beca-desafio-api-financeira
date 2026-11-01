@@ -24,6 +24,10 @@ public class CreateTransactionRequest {
     @NotNull
     private TransactionType type;
 
+    private String category;
+
+    private Long destinationUserId;
+
     public CreateTransactionRequest() {
     }
 
@@ -59,5 +63,19 @@ public class CreateTransactionRequest {
         this.type = type;
     }
 
+    public String getCategory() {
+        return category;
+    }
 
+    public void setCategory(String category) {
+        this.category = category;
+    }
+
+    public Long getDestinationUserId() {
+        return destinationUserId;
+    }
+
+    public void setDestinationUserId(Long destinationUserId) {
+        this.destinationUserId = destinationUserId;
+    }
 }

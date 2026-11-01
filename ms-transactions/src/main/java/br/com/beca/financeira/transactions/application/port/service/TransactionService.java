@@ -1,4 +1,4 @@
-package br.com.beca.financeira.transactions.application.service;
+package br.com.beca.financeira.transactions.application.port.service;
 
 import br.com.beca.financeira.transactions.application.port.in.TransactionUseCase;
 import br.com.beca.financeira.transactions.application.port.out.TransactionRepositoryPort;
@@ -20,9 +20,16 @@ public class TransactionService implements TransactionUseCase {
     }
 
     @Override
-    public Transaction create(Long userId, String description, BigDecimal amount, TransactionType type) {
+    public Transaction create(
+            Long userId,
+            String description,
+            BigDecimal amount,
+            TransactionType type,
+            String category,
+            Long destinationUserId
+    ) {
         Transaction transaction = new Transaction(
-                userId, description, amount, type
+                userId, description, amount, type, category, destinationUserId
         );
 
         return transactionRepositoryPort.save(transaction);
