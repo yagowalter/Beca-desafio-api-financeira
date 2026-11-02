@@ -36,19 +36,7 @@ public class Transaction {
     ) {
         validate(userId, description, amount, type);
 
-        if (type == TransactionType.PURCHASE
-                && (category == null || category.isBlank())) {
-            throw new IllegalArgumentException(
-                    "Categoria é obrigatória para compras"
-            );
-        }
-
-        if (type == TransactionType.TRANSFER
-                && (destinationUserId == null || destinationUserId <= 0)) {
-            throw new IllegalArgumentException(
-                    "Usuário de destino é obrigatório para transferências"
-            );
-        }
+        validateTypeDetails(type, category, destinationUserId);
 
         this.userId = userId;
         this.description = description;
@@ -67,22 +55,18 @@ public class Transaction {
             TransactionType type,
             LocalDateTime occurredAt
     ) {
-        validate(userId, description, amount, type);
-
-        if ((id == null) || (id <= 0)) {
-            throw new IllegalArgumentException("Identificador Inválido");
-        }
-
-        if (occurredAt == null) {
-            throw new IllegalArgumentException("Data da transação é obrigatória");
-        }
-
-        this.id = id;
-        this.userId = userId;
-        this.description = description;
-        this.amount = amount;
-        this.type = type;
-        this.occurredAt = occurredAt;
+        this(
+                id,
+                userId,
+                description,
+                amount,
+                type,
+                occurredAt,
+                null,
+                null,
+                null,
+                null
+        );
     }
 
     public Transaction(
@@ -97,14 +81,51 @@ public class Transaction {
             TransactionStatus status,
             String rejectionReason
     ) {
-        this(id, userId, description, amount, type, occurredAt);
+        validate(userId, description, amount, type);
+        validateTypeDetails(type, category, destinationUserId);
+        validateStatus(status, rejectionReason);
 
+        if (id == null || id <= 0) {
+            throw new IllegalArgumentException("Identificador invalido");
+        }
+
+        if (occurredAt == null) {
+            throw new IllegalArgumentException(
+                    "Data da transação é obrigatória"
+            );
+        }
+
+        this.id = id;
+        this.userId = userId;
+        this.description = description;
+        this.amount = amount;
+        this.type = type;
+        this.occurredAt = occurredAt;
         this.category = category;
         this.destinationUserId = destinationUserId;
         this.status = status;
         this.rejectionReason = rejectionReason;
     }
 
+    private void validateTypeDetails(
+            TransactionType type,
+            String category,
+            Long destinationUserId
+    ) {
+        if (type == TransactionType.PURCHASE
+                && (category == null || category.isBlank())) {
+            throw new IllegalArgumentException(
+                    "Categoria é obrigatória para compras"
+            );
+        }
+
+        if (type == TransactionType.TRANSFER
+                && (destinationUserId == null || destinationUserId <= 0)) {
+            throw new IllegalArgumentException(
+                    "Usuário de destino é obrigatório para transferências"
+            );
+        }
+    }
 
     private void validate(
             Long userId, String description, BigDecimal amount, TransactionType type
@@ -135,12 +156,7 @@ public class Transaction {
 
     public void reject(String reason) {
         ensureNotFinalized();
-
-        if (reason == null || reason.isBlank()) {
-            throw new IllegalArgumentException(
-                    "Motivo da rejeição é obrigatório"
-            );
-        }
+        validateStatus(TransactionStatus.REJECTED, reason);
 
         this.rejectionReason = reason;
         this.status = TransactionStatus.REJECTED;
@@ -150,6 +166,23 @@ public class Transaction {
         if (status != null) {
             throw new IllegalStateException(
                     "A transação ja foi finalizada"
+            );
+        }
+    }
+
+    private void validateStatus(
+            TransactionStatus status,
+            String rejectionReason
+    ) {
+        if (status == TransactionStatus.REJECTED) {
+            if (rejectionReason == null || rejectionReason.isBlank()) {
+                throw new IllegalArgumentException(
+                        "Motivo da rejeição é obrigatório"
+                );
+            }
+        } else if (rejectionReason != null) {
+            throw new IllegalArgumentException(
+                    "Somente transações rejeitadas podem ter motivo de rejeição"
             );
         }
     }
