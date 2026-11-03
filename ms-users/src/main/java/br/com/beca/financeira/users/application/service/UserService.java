@@ -6,6 +6,7 @@ import br.com.beca.financeira.users.domain.User;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Locale;
 
 @Service
 public class UserService implements UserUseCase {
@@ -18,11 +19,13 @@ public class UserService implements UserUseCase {
 
     @Override
     public User create(String name, String email) {
-        if (userRepositoryPort.existsByEmail(email)) {
+        String normalizedEmail = normalizeEmail(email);
+
+        if (userRepositoryPort.existsByEmail(normalizedEmail)) {
             throw new DuplicateResourceException("E-mail já cadastrado");
         }
 
-        return userRepositoryPort.save(new User(name, email));
+        return userRepositoryPort.save(new User(name, normalizedEmail));
     }
 
     @Override
@@ -38,13 +41,14 @@ public class UserService implements UserUseCase {
     @Override
     public User update(Long id, String name, String email) {
         User user = findEntityById(id);
+        String normalizedEmail = normalizeEmail(email);
 
-        if (!user.getEmail().equals(email)
-                && userRepositoryPort.existsByEmailAndIdNot(email, id)) {
+        if (!normalizeEmail(user.getEmail()).equals(normalizedEmail)
+                && userRepositoryPort.existsByEmailAndIdNot(normalizedEmail, id)) {
             throw new DuplicateResourceException("E-mail já cadastrado");
         }
 
-        user.update(name, email);
+        user.update(name, normalizedEmail);
         return userRepositoryPort.save(user);
     }
 
@@ -58,5 +62,9 @@ public class UserService implements UserUseCase {
         return userRepositoryPort.findById(id)
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Usuário não encontrado"));
+    }
+
+    private String normalizeEmail(String email) {
+        return email == null ? null : email.trim().toLowerCase(Locale.ROOT);
     }
 }
