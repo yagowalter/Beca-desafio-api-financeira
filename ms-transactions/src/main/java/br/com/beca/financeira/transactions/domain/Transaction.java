@@ -147,6 +147,34 @@ public class Transaction {
         }
     }
 
+    public String validateBalanceAndTransactionLimit(
+            BigDecimal balance,
+            BigDecimal perTransactionLimit
+    ){
+        if (amount.compareTo(balance) > 0){
+            return "Saldo insuficiente";
+        }
+
+        if (amount.compareTo(perTransactionLimit) > 0){
+            return "Valor acima do limite por transação";
+        }
+
+        return null;
+    }
+
+    public String validateDailyLimit(
+            BigDecimal spentToday,
+            BigDecimal dailyLimit
+    ){
+        BigDecimal totalWithNewTransaction = spentToday.add(amount);
+
+        if (totalWithNewTransaction.compareTo(dailyLimit) > 0){
+            return "Limite diário excedido";
+        }
+
+        return null;
+    }
+
     public void approve() {
         ensureNotFinalized();
 
