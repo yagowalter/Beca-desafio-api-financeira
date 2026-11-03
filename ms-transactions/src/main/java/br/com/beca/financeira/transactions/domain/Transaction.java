@@ -1,6 +1,7 @@
 package br.com.beca.financeira.transactions.domain;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 
@@ -16,6 +17,11 @@ public class Transaction {
     private Long destinationUserId;
     private TransactionStatus status;
     private String rejectionReason;
+    private BigDecimal usdRate;
+    private LocalDate usdQuoteDate;
+    private BigDecimal eurRate;
+    private LocalDate eurQuoteDate;
+    private boolean exchangeRatesAvailable;
 
     public Transaction(
             Long userId,
@@ -45,6 +51,7 @@ public class Transaction {
         this.occurredAt = LocalDateTime.now();
         this.category = category;
         this.destinationUserId = destinationUserId;
+        this.exchangeRatesAvailable = false;
     }
 
     public Transaction(
@@ -65,7 +72,12 @@ public class Transaction {
                 null,
                 null,
                 null,
-                null
+                null,
+                null,
+                null,
+                null,
+                null,
+                false
         );
     }
 
@@ -79,7 +91,13 @@ public class Transaction {
             String category,
             Long destinationUserId,
             TransactionStatus status,
-            String rejectionReason
+            String rejectionReason,
+            BigDecimal usdRate,
+            LocalDate usdQuoteDate,
+            BigDecimal eurRate,
+            LocalDate eurQuoteDate,
+            boolean exchangeRatesAvailable
+
     ) {
         validate(userId, description, amount, type);
         validateTypeDetails(type, category, destinationUserId);
@@ -105,6 +123,28 @@ public class Transaction {
         this.destinationUserId = destinationUserId;
         this.status = status;
         this.rejectionReason = rejectionReason;
+        this.usdRate = usdRate;
+        this.usdQuoteDate = usdQuoteDate;
+        this.eurRate = eurRate;
+        this.eurQuoteDate = eurQuoteDate;
+        this.exchangeRatesAvailable = exchangeRatesAvailable;
+    }
+
+    public void registerExchangeRates(
+            BigDecimal usdRate,
+            LocalDate usdQuoteDate,
+            BigDecimal eurRate,
+            LocalDate eurQuoteDate
+    ) {
+        this.usdRate = usdRate;
+        this.usdQuoteDate = usdQuoteDate;
+        this.eurRate = eurRate;
+        this.eurQuoteDate = eurQuoteDate;
+
+        this.exchangeRatesAvailable = usdRate != null
+                && eurRate != null
+                && usdQuoteDate != null
+                && eurQuoteDate != null;
     }
 
     private void validateTypeDetails(
@@ -150,12 +190,12 @@ public class Transaction {
     public String validateBalanceAndTransactionLimit(
             BigDecimal balance,
             BigDecimal perTransactionLimit
-    ){
-        if (amount.compareTo(balance) > 0){
+    ) {
+        if (amount.compareTo(balance) > 0) {
             return "Saldo insuficiente";
         }
 
-        if (amount.compareTo(perTransactionLimit) > 0){
+        if (amount.compareTo(perTransactionLimit) > 0) {
             return "Valor acima do limite por transação";
         }
 
@@ -165,10 +205,10 @@ public class Transaction {
     public String validateDailyLimit(
             BigDecimal spentToday,
             BigDecimal dailyLimit
-    ){
+    ) {
         BigDecimal totalWithNewTransaction = spentToday.add(amount);
 
-        if (totalWithNewTransaction.compareTo(dailyLimit) > 0){
+        if (totalWithNewTransaction.compareTo(dailyLimit) > 0) {
             return "Limite diário excedido";
         }
 
@@ -215,6 +255,20 @@ public class Transaction {
         }
     }
 
+    public BigDecimal getAmountUsd() {
+        if (!exchangeRatesAvailable) {
+            return null;
+        }
+        return amount.divide(usdRate, 2, java.math.RoundingMode.HALF_UP);
+    }
+
+    public BigDecimal getAmountEur() {
+        if (!exchangeRatesAvailable) {
+            return null;
+        }
+        return amount.divide(eurRate, 2, java.math.RoundingMode.HALF_UP);
+    }
+
     public Long getId() {
         return id;
     }
@@ -254,5 +308,26 @@ public class Transaction {
     public String getRejectionReason() {
         return rejectionReason;
     }
+
+    public LocalDate getUsdQuoteDate() {
+        return usdQuoteDate;
+    }
+
+    public BigDecimal getEurRate() {
+        return eurRate;
+    }
+
+    public BigDecimal getUsdRate() {
+        return usdRate;
+    }
+
+    public LocalDate getEurQuoteDate() {
+        return eurQuoteDate;
+    }
+
+    public boolean isExchangeRatesAvailable() {
+        return exchangeRatesAvailable;
+    }
+
 
 }

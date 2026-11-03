@@ -7,6 +7,7 @@ public interface ExchangeRatePort {
 
     ExchangeRate findByCurrencyAndDate(String currency, LocalDate date);
 
+
     record ExchangeRate(
             BigDecimal sellingRate,
             LocalDate quoteDate

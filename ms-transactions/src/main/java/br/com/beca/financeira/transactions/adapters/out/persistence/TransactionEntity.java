@@ -6,6 +6,7 @@ import br.com.beca.financeira.transactions.domain.TransactionType;
 import jakarta.persistence.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -45,6 +46,21 @@ public class TransactionEntity {
     @Column(name = "rejection_reason")
     private String rejectionReason;
 
+    @Column(name = "usd_rate", precision = 19, scale = 6)
+    private BigDecimal usdRate;
+
+    @Column(name = "usd_quote_date")
+    private LocalDate usdQuoteDate;
+
+    @Column(name = "eur_rate", precision = 19, scale = 6)
+    private BigDecimal eurRate;
+
+    @Column(name = "eur_quote_date")
+    private LocalDate eurQuoteDate;
+
+    @Column(name = "exchange_rates_available", nullable = false)
+    private boolean exchangeRatesAvailable;
+
     protected TransactionEntity() {
     }
 
@@ -59,6 +75,11 @@ public class TransactionEntity {
         this.destinationUserId = transaction.getDestinationUserId();
         this.status = transaction.getStatus();
         this.rejectionReason = transaction.getRejectionReason();
+        this.usdRate = transaction.getUsdRate();
+        this.usdQuoteDate = transaction.getUsdQuoteDate();
+        this.eurRate = transaction.getEurRate();
+        this.eurQuoteDate = transaction.getEurQuoteDate();
+        this.exchangeRatesAvailable = transaction.isExchangeRatesAvailable();
     }
 
     public Transaction toDomain() {
@@ -71,7 +92,13 @@ public class TransactionEntity {
                 category,
                 destinationUserId,
                 status,
-                rejectionReason);
+                rejectionReason,
+                usdRate,
+                usdQuoteDate,
+                eurRate,
+                eurQuoteDate,
+                exchangeRatesAvailable
+        );
     }
 
 }

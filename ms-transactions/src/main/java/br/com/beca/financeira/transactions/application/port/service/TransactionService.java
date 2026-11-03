@@ -1,14 +1,17 @@
 package br.com.beca.financeira.transactions.application.port.service;
 
 import br.com.beca.financeira.transactions.application.port.in.TransactionUseCase;
+import br.com.beca.financeira.transactions.application.port.out.ExchangeRatePort;
 import br.com.beca.financeira.transactions.application.port.out.TransactionRepositoryPort;
 import br.com.beca.financeira.transactions.domain.Transaction;
 import br.com.beca.financeira.transactions.domain.TransactionType;
 import org.springframework.stereotype.Service;
 import br.com.beca.financeira.transactions.application.port.out.AccountLimitsPort;
+import org.springframework.web.client.RestClientException;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 @Service
@@ -16,13 +19,16 @@ public class TransactionService implements TransactionUseCase {
 
     private final TransactionRepositoryPort transactionRepositoryPort;
     private final AccountLimitsPort accountLimitsPort;
+    private final ExchangeRatePort exchangeRatePort;
 
     public TransactionService(
             TransactionRepositoryPort transactionRepositoryPort,
-            AccountLimitsPort accountLimitsPort
+            AccountLimitsPort accountLimitsPort,
+            ExchangeRatePort exchangeRatePort
     ) {
         this.transactionRepositoryPort = transactionRepositoryPort;
         this.accountLimitsPort = accountLimitsPort;
+        this.exchangeRatePort = exchangeRatePort;
     }
 
     @Override
@@ -37,6 +43,8 @@ public class TransactionService implements TransactionUseCase {
         Transaction transaction = new Transaction(
                 userId, description, amount, type, category, destinationUserId
         );
+
+        registerLatestAvailableExchangeRates(transaction);
 
         if (type == TransactionType.WITHDRAW
                 || type == TransactionType.TRANSFER
@@ -77,7 +85,35 @@ public class TransactionService implements TransactionUseCase {
             transaction.approve();
         }
 
+
         return transactionRepositoryPort.save(transaction);
+    }
+
+    private void registerLatestAvailableExchangeRates(Transaction transaction) {
+        LocalDate quoteDate = transaction.getOccurredAt().toLocalDate();
+
+        for (int daysBack = 0; daysBack <= 7; daysBack++) {
+            LocalDate candidateDate = quoteDate.minus(daysBack, ChronoUnit.DAYS);
+
+            try {
+                ExchangeRatePort.ExchangeRate usd =
+                        exchangeRatePort.findByCurrencyAndDate("USD", candidateDate);
+                ExchangeRatePort.ExchangeRate eur =
+                        exchangeRatePort.findByCurrencyAndDate("EUR", candidateDate);
+
+                transaction.registerExchangeRates(
+                        usd.sellingRate(),
+                        usd.quoteDate(),
+                        eur.sellingRate(),
+                        eur.quoteDate()
+                );
+                return;
+            } catch (RestClientException | IllegalStateException exception) {
+                // Sem cotação nessa data: tenta a data anterior.
+            }
+        }
+
+        transaction.registerExchangeRates(null, null, null, null);
     }
 
 
