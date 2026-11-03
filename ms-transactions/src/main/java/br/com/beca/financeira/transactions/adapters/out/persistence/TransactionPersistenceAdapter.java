@@ -5,6 +5,8 @@ import br.com.beca.financeira.transactions.application.port.out.TransactionRepos
 import br.com.beca.financeira.transactions.domain.Transaction;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -38,4 +40,16 @@ public class TransactionPersistenceAdapter implements TransactionRepositoryPort 
         return transactionJpaRepository.findById(id).map(TransactionEntity::toDomain);
     }
 
+    @Override
+    public BigDecimal sumApprovedOutflowsByUserIdAndPeriod(
+            Long userId,
+            LocalDateTime start,
+            LocalDateTime end
+    ) {
+        return transactionJpaRepository.sumApprovedOutflowsByUserIdAndPeriod(
+                userId,
+                start,
+                end
+        );
+    }
 }
