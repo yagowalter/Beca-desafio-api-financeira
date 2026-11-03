@@ -21,4 +21,10 @@ public interface TransactionRepositoryPort {
             LocalDateTime end
     );
 
+    List<Transaction> findApprovedOutflowsByUserIdAndPeriod(
+            Long userId,
+            LocalDateTime startInclusive,
+            LocalDateTime endExclusive
+    );
+
 }

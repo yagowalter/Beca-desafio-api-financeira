@@ -20,5 +20,4 @@ public interface TransactionUseCase {
     List<Transaction> findAll();
 
     Transaction findById(Long id);
-
 }
