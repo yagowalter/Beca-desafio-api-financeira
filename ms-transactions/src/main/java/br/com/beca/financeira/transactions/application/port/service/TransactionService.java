@@ -8,7 +8,6 @@ import br.com.beca.financeira.transactions.domain.TransactionType;
 import org.springframework.stereotype.Service;
 import br.com.beca.financeira.transactions.application.port.out.AccountLimitsPort;
 import org.springframework.web.client.RestClientException;
-
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
@@ -115,6 +114,7 @@ public class TransactionService implements TransactionUseCase {
 
         transaction.registerExchangeRates(null, null, null, null);
     }
+
 
 
     @Override

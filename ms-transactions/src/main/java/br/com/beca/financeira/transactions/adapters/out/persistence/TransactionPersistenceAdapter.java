@@ -52,4 +52,21 @@ public class TransactionPersistenceAdapter implements TransactionRepositoryPort 
                 end
         );
     }
+
+    @Override
+    public List<Transaction> findApprovedOutflowsByUserIdAndPeriod(
+            Long userId,
+            LocalDateTime startInclusive,
+            LocalDateTime endExclusive
+    ) {
+        return transactionJpaRepository
+                .findApprovedOutflowsByUserIdAndPeriod(
+                        userId,
+                        startInclusive,
+                        endExclusive
+                )
+                .stream()
+                .map(TransactionEntity::toDomain)
+                .toList();
+    }
 }
