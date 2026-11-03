@@ -20,7 +20,7 @@ public class CreateUserRequest {
 
     public CreateUserRequest(String name, String email) {
         this.name = name;
-        this.email = email;
+        setEmail(email);
     }
 
     public String getName() {
@@ -36,7 +36,7 @@ public class CreateUserRequest {
     }
 
     public void setEmail(String email) {
-        this.email = email;
+        this.email = email == null ? null : email.trim();
     }
 }
 

@@ -20,7 +20,7 @@ public class UpdateUserRequest {
 
     public UpdateUserRequest(String name, String email) {
         this.name = name;
-        this.email = email;
+        setEmail(email);
     }
 
     public String getName() {
@@ -36,6 +36,6 @@ public class UpdateUserRequest {
     }
 
     public void setEmail(String email) {
-        this.email = email;
+        this.email = email == null ? null : email.trim();
     }
 }
