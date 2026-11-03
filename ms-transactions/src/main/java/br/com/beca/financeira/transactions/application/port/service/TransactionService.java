@@ -7,10 +7,11 @@ import br.com.beca.financeira.transactions.domain.Transaction;
 import br.com.beca.financeira.transactions.domain.TransactionType;
 import org.springframework.stereotype.Service;
 import br.com.beca.financeira.transactions.application.port.out.AccountLimitsPort;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClientException;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 @Service
@@ -92,7 +93,7 @@ public class TransactionService implements TransactionUseCase {
         LocalDate quoteDate = transaction.getOccurredAt().toLocalDate();
 
         for (int daysBack = 0; daysBack <= 7; daysBack++) {
-            LocalDate candidateDate = quoteDate.minus(daysBack, ChronoUnit.DAYS);
+            LocalDate candidateDate = quoteDate.minusDays(daysBack);
 
             try {
                 ExchangeRatePort.ExchangeRate usd =
@@ -107,15 +108,24 @@ public class TransactionService implements TransactionUseCase {
                         eur.quoteDate()
                 );
                 return;
-            } catch (RestClientException | IllegalStateException exception) {
+            } catch (HttpClientErrorException.NotFound | IllegalStateException exception) {
                 // Sem cotação nessa data: tenta a data anterior.
+            } catch (HttpClientErrorException.BadRequest exception) {
+                if (exception.getResponseBodyAsString().contains("NO_TODAY_DATE")) {
+                    // a cotação de hoje ainda não está disponivel: tenta a data anterior.
+                    continue;
+                }
+                transaction.registerExchangeRates(null, null, null, null);
+                return;
+            } catch (RestClientException exception) {
+                // Falha de comunicação ou erro do serviço: não repete chamadas.
+                transaction.registerExchangeRates(null, null, null, null);
+                return;
             }
         }
 
         transaction.registerExchangeRates(null, null, null, null);
     }
-
-
 
     @Override
     public List<Transaction> findAll() {
