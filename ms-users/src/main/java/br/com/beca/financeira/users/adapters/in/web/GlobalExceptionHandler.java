@@ -1,6 +1,7 @@
 package br.com.beca.financeira.users.adapters.in.web;
 
 import br.com.beca.financeira.users.application.service.DuplicateResourceException;
+import br.com.beca.financeira.users.application.service.InvalidCsvHeaderException;
 import br.com.beca.financeira.users.application.service.ResourceNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -74,6 +75,15 @@ public class GlobalExceptionHandler {
         return ProblemDetail.forStatusAndDetail(
                 HttpStatus.BAD_REQUEST,
                 "Corpo da requisição inválido ou com valores desconhecidos"
+        );
+    }
+
+    @ExceptionHandler(InvalidCsvHeaderException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ProblemDetail handleInvalidCsvHeader(InvalidCsvHeaderException exception) {
+        return ProblemDetail.forStatusAndDetail(
+                HttpStatus.BAD_REQUEST,
+                exception.getMessage()
         );
     }
 }
