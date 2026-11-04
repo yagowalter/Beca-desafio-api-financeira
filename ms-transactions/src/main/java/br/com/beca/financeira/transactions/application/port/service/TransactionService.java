@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import br.com.beca.financeira.transactions.application.port.out.AccountLimitsPort;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -138,8 +139,20 @@ public class TransactionService implements TransactionUseCase {
     }
 
     @Override
+    public List<Transaction> findAllByUserId(Long userId) {
+        return transactionRepositoryPort.findAllByUserId(userId);
+    }
+
+    @Override
     public Transaction findById(Long id) {
         return findEntityById(id);
+    }
+
+    @Override
+    public Transaction findByIdAndUserId(Long id, Long userId) {
+        return transactionRepositoryPort.findByIdAndUserId(id, userId)
+                .orElseThrow(() ->
+                        new TransactionNotFoundException("Transação não encontrada"));
     }
 
     private Transaction findEntityById(Long id) {
