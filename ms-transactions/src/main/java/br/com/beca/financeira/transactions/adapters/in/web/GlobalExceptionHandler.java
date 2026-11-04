@@ -1,6 +1,8 @@
 package br.com.beca.financeira.transactions.adapters.in.web;
 
 
+import br.com.beca.financeira.transactions.application.port.service.AccountLimitsUnavailableException;
+import br.com.beca.financeira.transactions.application.port.service.AccountNotFoundException;
 import br.com.beca.financeira.transactions.application.port.service.TransactionNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -22,6 +24,24 @@ public class GlobalExceptionHandler {
     public ProblemDetail handleNotFound(TransactionNotFoundException exception) {
         return ProblemDetail.forStatusAndDetail(
                 HttpStatus.NOT_FOUND,
+                exception.getMessage()
+        );
+    }
+
+    @ExceptionHandler(AccountNotFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public ProblemDetail handleAccountNotFound(AccountNotFoundException exception) {
+        return ProblemDetail.forStatusAndDetail(
+                HttpStatus.NOT_FOUND,
+                exception.getMessage()
+        );
+    }
+
+    @ExceptionHandler(AccountLimitsUnavailableException.class)
+    @ResponseStatus(HttpStatus.SERVICE_UNAVAILABLE)
+    public ProblemDetail handleAccountLimitsUnavailable(AccountLimitsUnavailableException exception) {
+        return ProblemDetail.forStatusAndDetail(
+                HttpStatus.SERVICE_UNAVAILABLE,
                 exception.getMessage()
         );
     }
