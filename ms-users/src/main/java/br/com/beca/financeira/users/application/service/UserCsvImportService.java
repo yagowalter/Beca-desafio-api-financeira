@@ -6,8 +6,13 @@ import br.com.beca.financeira.users.application.port.in.UserUseCase;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
 import jakarta.validation.constraints.*;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVParser;
+import org.apache.commons.csv.CSVRecord;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -18,6 +23,10 @@ public class UserCsvImportService implements UserCsvImportUseCase {
 
     private final UserUseCase userUseCase;
     private final Validator validator;
+
+    private static final CSVFormat CSV_FORMAT = CSVFormat.DEFAULT.builder()
+            .setDelimiter(";")
+            .get();
 
     public UserCsvImportService(UserUseCase userUseCase, Validator validator) {
         this.userUseCase = userUseCase;
@@ -33,14 +42,7 @@ public class UserCsvImportService implements UserCsvImportUseCase {
         if (lines.isEmpty()
                 || !lines.getFirst().replace("\uFEFF", "").trim()
                 .equalsIgnoreCase("name;email")) {
-            return new UserCsvImportResult(
-                    0,
-                    1,
-                    List.of(new UserCsvImportResult.RowError(
-                            1,
-                            "Cabeçalho inválido. Use name;email"
-                    ))
-            );
+            throw new InvalidCsvHeaderException("Cabeçalho inválido. Use name;email");
         }
 
         List<UserCsvImportResult.RowError> errors = new ArrayList<>();
@@ -48,8 +50,13 @@ public class UserCsvImportService implements UserCsvImportUseCase {
 
         for (int index = 1; index < lines.size(); index++) {
             int lineNumber = index + 1;
+            String line = lines.get(index);
 
-            if (processLine(lines.get(index), lineNumber, errors)) {
+            if (line.isBlank()) {
+                continue;
+            }
+
+            if (processLine(line, lineNumber, errors)) {
                 importedCount++;
             }
         }
@@ -66,22 +73,34 @@ public class UserCsvImportService implements UserCsvImportUseCase {
             int lineNumber,
             List<UserCsvImportResult.RowError> errors
     ) {
-        if (line.isBlank()) {
-            errors.add(new UserCsvImportResult.RowError(lineNumber, "Linha vazia"));
-            return false;
-        }
 
-        String[] columns = line.split(";", -1);
+        CSVRecord record;
 
-        if (columns.length != 2) {
+        try (CSVParser parser = CSVParser.parse(line, CSV_FORMAT)) {
+            List<CSVRecord> records = parser.getRecords();
+
+            if (records.size() != 1 || records.getFirst().size() != 2) {
+                errors.add(new UserCsvImportResult.RowError(
+                        lineNumber,
+                        "A linha deve conter nome e e-mail separados por ponto e vírgula"
+                ));
+                return false;
+            }
+
+            record = records.getFirst();
+        } catch (IOException exception) {
             errors.add(new UserCsvImportResult.RowError(
                     lineNumber,
-                    "A linha deve conter nome e e-mail separados por ponto e vírgula"
+                    "Formato CSV inválido"
             ));
             return false;
         }
 
-        CsvUserRow row = new CsvUserRow(columns[0].trim(), columns[1].trim());
+        CsvUserRow row = new CsvUserRow(
+                record.get(0).trim(),
+                record.get(1).trim()
+        );
+
         Set<ConstraintViolation<CsvUserRow>> violations = validator.validate(row);
 
         if (!violations.isEmpty()) {
@@ -98,7 +117,15 @@ public class UserCsvImportService implements UserCsvImportUseCase {
             userUseCase.create(row.name(), row.email());
             return true;
         } catch (DuplicateResourceException exception) {
-            errors.add(new UserCsvImportResult.RowError(lineNumber, exception.getMessage()));
+            errors.add(new UserCsvImportResult.RowError(
+                    lineNumber,
+                    exception.getMessage()
+            ));
+            return false;
+        } catch (DataIntegrityViolationException exception) {
+            errors.add(new UserCsvImportResult.RowError(
+                    lineNumber,
+                    "Dados do usuário violam uma restrição do sistema"));
             return false;
         }
     }
