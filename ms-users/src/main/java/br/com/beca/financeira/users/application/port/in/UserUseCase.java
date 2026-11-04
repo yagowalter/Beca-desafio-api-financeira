@@ -9,6 +9,8 @@ public interface UserUseCase {
 
     User create(String name, String email);
 
+    User create(String name, String email, String rawPassword);
+
     List<User> findAll();
 
     User findById(Long id);

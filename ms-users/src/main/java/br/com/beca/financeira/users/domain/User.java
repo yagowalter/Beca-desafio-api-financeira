@@ -5,17 +5,25 @@ public class User {
     private final Long id;
     private String name;
     private String email;
+    private final String passwordHash;
 
-    // Criação de usuário novo, ainda sem ID do banco
     public User(String name, String email) {
         this(null, name, email);
     }
 
-    // Reconstrução de usuário já persistido
     public User(Long id, String name, String email) {
+        this(id, name,email, null);
+    }
+
+    public User(Long id, String name, String email, String passwordHash) {
         this.id = id;
         this.name = name;
         this.email = email;
+        this.passwordHash = passwordHash;
+    }
+
+    public String getPasswordHash() {
+        return passwordHash;
     }
 
     public Long getId() {

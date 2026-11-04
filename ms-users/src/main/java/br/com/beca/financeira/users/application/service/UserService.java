@@ -1,6 +1,7 @@
 package br.com.beca.financeira.users.application.service;
 
 import br.com.beca.financeira.users.application.port.in.UserUseCase;
+import br.com.beca.financeira.users.application.port.out.PasswordHasherPort;
 import br.com.beca.financeira.users.application.port.out.UserRepositoryPort;
 import br.com.beca.financeira.users.domain.User;
 import org.springframework.stereotype.Service;
@@ -12,21 +13,38 @@ import java.util.Locale;
 public class UserService implements UserUseCase {
 
     private final UserRepositoryPort userRepositoryPort;
+    private final PasswordHasherPort passwordHasherPort;
 
-    public UserService(UserRepositoryPort userRepositoryPort) {
+    public UserService(
+            UserRepositoryPort userRepositoryPort,
+            PasswordHasherPort passwordHasherPort
+    ) {
         this.userRepositoryPort = userRepositoryPort;
+        this.passwordHasherPort = passwordHasherPort;
     }
 
     @Override
     public User create(String name, String email) {
+        return create(name, email, null);
+    }
+
+    @Override
+    public User create(String name, String email, String rawPassword) {
         String normalizedEmail = normalizeEmail(email);
 
         if (userRepositoryPort.existsByEmail(normalizedEmail)) {
             throw new DuplicateResourceException("E-mail já cadastrado");
         }
 
-        return userRepositoryPort.save(new User(name, normalizedEmail));
+        String passwordHash = rawPassword == null
+                ? null
+                : passwordHasherPort.hash(rawPassword);
+
+        return userRepositoryPort.save(
+                new User(null, name, normalizedEmail, passwordHash)
+        );
     }
+
 
     @Override
     public List<User> findAll() {

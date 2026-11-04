@@ -40,7 +40,8 @@ public class UserController {
 
         User user = userUseCase.create(
                 createUserRequest.getName(),
-                createUserRequest.getEmail()
+                createUserRequest.getEmail(),
+                createUserRequest.getPassword()
         );
 
         UserResponse userResponse = toResponse(user);
@@ -53,10 +54,7 @@ public class UserController {
         return ResponseEntity.created(location).body(userResponse);
     }
 
-    @PostMapping(
-            value = "/import",
-            consumes = MediaType.MULTIPART_FORM_DATA_VALUE
-    )
+    @PostMapping(value = "/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<UserCsvImportResult> importCsv(
             @RequestParam("file") MultipartFile file
     ) throws IOException {
