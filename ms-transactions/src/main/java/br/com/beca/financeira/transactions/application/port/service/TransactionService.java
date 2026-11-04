@@ -111,7 +111,7 @@ public class TransactionService implements TransactionUseCase {
             } catch (HttpClientErrorException.NotFound | IllegalStateException exception) {
                 // Sem cotação nessa data: tenta a data anterior.
             } catch (HttpClientErrorException.BadRequest exception) {
-                if (exception.getResponseBodyAsString().contains("NO_TODAY_DATE")) {
+                if (isTodayQuoteUnavailable(exception)) {
                     // a cotação de hoje ainda não está disponivel: tenta a data anterior.
                     continue;
                 }
@@ -125,6 +125,11 @@ public class TransactionService implements TransactionUseCase {
         }
 
         transaction.registerExchangeRates(null, null, null, null);
+    }
+
+    private boolean isTodayQuoteUnavailable(HttpClientErrorException.BadRequest exception) {
+        // A BrasilAPI informa que a cotação de hoje ainda não está disponível pelo código NO_TODAY_DATE.
+        return exception.getResponseBodyAsString().contains("NO_TODAY_DATE");
     }
 
     @Override

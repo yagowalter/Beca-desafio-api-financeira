@@ -2,10 +2,13 @@ package br.com.beca.financeira.transactions.adapters.out.http;
 
 
 import br.com.beca.financeira.transactions.application.port.out.AccountLimitsPort;
+import br.com.beca.financeira.transactions.application.port.service.AccountLimitsUnavailableException;
+import br.com.beca.financeira.transactions.application.port.service.AccountNotFoundException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientException;
 
 import java.util.List;
 
@@ -16,14 +19,22 @@ public class AccountLimitsAdapter implements AccountLimitsPort {
 
     @Override
     public AccountLimitsPort.AccountLimits findByUserId(Long userId) {
-        List<AccountLimitsResponse> accounts = restClient.get()
-                .uri(accountsUrl + "?userId={userId}", userId)
-                .retrieve()
-                .body(new ParameterizedTypeReference<>() {
-                });
+       List<AccountLimitsResponse> accounts;
+
+       try {
+           accounts = restClient.get()
+                   .uri(accountsUrl + "?userId={userId}" , userId)
+                   .retrieve()
+                   .body(new ParameterizedTypeReference<>() {});
+       } catch (RestClientException exception) {
+           throw new AccountLimitsUnavailableException(
+                   "Não foi possível consultar saldo e limites da conta",
+                   exception
+           );
+       }
 
         if (accounts == null || accounts.isEmpty()) {
-            throw new IllegalArgumentException(
+            throw new AccountNotFoundException(
                     "Conta não encontrada para o usuário " + userId
             );
         }
