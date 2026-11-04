@@ -7,15 +7,11 @@ public class User {
     private String email;
     private final String passwordHash;
 
-    public User(String name, String email) {
-        this(null, name, email);
-    }
-
-    public User(Long id, String name, String email) {
-        this(id, name,email, null);
-    }
-
     public User(Long id, String name, String email, String passwordHash) {
+        if (passwordHash == null || passwordHash.isBlank()) {
+            throw new IllegalArgumentException("Hash da senha é obrigatório");
+        }
+
         this.id = id;
         this.name = name;
         this.email = email;

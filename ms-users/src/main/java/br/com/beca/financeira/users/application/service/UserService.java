@@ -24,11 +24,6 @@ public class UserService implements UserUseCase {
     }
 
     @Override
-    public User create(String name, String email) {
-        return create(name, email, null);
-    }
-
-    @Override
     public User create(String name, String email, String rawPassword) {
         String normalizedEmail = normalizeEmail(email);
 
@@ -36,9 +31,7 @@ public class UserService implements UserUseCase {
             throw new DuplicateResourceException("E-mail já cadastrado");
         }
 
-        String passwordHash = rawPassword == null
-                ? null
-                : passwordHasherPort.hash(rawPassword);
+        String passwordHash = passwordHasherPort.hash(rawPassword);
 
         return userRepositoryPort.save(
                 new User(null, name, normalizedEmail, passwordHash)

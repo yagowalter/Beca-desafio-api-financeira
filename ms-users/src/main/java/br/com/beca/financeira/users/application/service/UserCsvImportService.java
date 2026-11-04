@@ -41,8 +41,8 @@ public class UserCsvImportService implements UserCsvImportUseCase {
 
         if (lines.isEmpty()
                 || !lines.getFirst().replace("\uFEFF", "").trim()
-                .equalsIgnoreCase("name;email")) {
-            throw new InvalidCsvHeaderException("Cabeçalho inválido. Use name;email");
+                .equalsIgnoreCase("name;email;password")) {
+            throw new InvalidCsvHeaderException("Cabeçalho inválido. Use name;email;password");
         }
 
         List<UserCsvImportResult.RowError> errors = new ArrayList<>();
@@ -79,10 +79,10 @@ public class UserCsvImportService implements UserCsvImportUseCase {
         try (CSVParser parser = CSVParser.parse(line, CSV_FORMAT)) {
             List<CSVRecord> records = parser.getRecords();
 
-            if (records.size() != 1 || records.getFirst().size() != 2) {
+            if (records.size() != 1 || records.getFirst().size() != 3) {
                 errors.add(new UserCsvImportResult.RowError(
                         lineNumber,
-                        "A linha deve conter nome e e-mail separados por ponto e vírgula"
+                        "A linha deve conter nome, e-mail e senha separados por ponto e vírgula"
                 ));
                 return false;
             }
@@ -98,7 +98,8 @@ public class UserCsvImportService implements UserCsvImportUseCase {
 
         CsvUserRow row = new CsvUserRow(
                 record.get(0).trim(),
-                record.get(1).trim()
+                record.get(1).trim(),
+                record.get(2)
         );
 
         Set<ConstraintViolation<CsvUserRow>> violations = validator.validate(row);
@@ -114,7 +115,7 @@ public class UserCsvImportService implements UserCsvImportUseCase {
         }
 
         try {
-            userUseCase.create(row.name(), row.email());
+            userUseCase.create(row.name(), row.email(),  row.password());
             return true;
         } catch (DuplicateResourceException exception) {
             errors.add(new UserCsvImportResult.RowError(
@@ -136,7 +137,8 @@ public class UserCsvImportService implements UserCsvImportUseCase {
 
             @NotBlank(message = "E-mail é obrigatório")
             @Email(message = "E-mail inválido")
-            @Size(max = 150, message = "E-mail deve ter até 150 caracteres") String email
-    ) {
+            @Size(max = 150, message = "E-mail deve ter até 150 caracteres") String email,
+
+            @NotBlank(message = "Senha é obrigatória") String password) {
     }
 }

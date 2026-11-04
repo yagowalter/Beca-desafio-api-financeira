@@ -10,6 +10,7 @@ import br.com.beca.financeira.users.domain.User;
 import jakarta.validation.Valid;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
@@ -17,6 +18,7 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.security.Principal;
 import java.util.List;
 
 @RestController
@@ -32,6 +34,14 @@ public class UserController {
     ) {
         this.userUseCase = userUseCase;
         this.userCsvImportUseCase = userCsvImportUseCase;
+    }
+
+    private void ensureOwnAccount(Long id, Principal principal) {
+        User targetUser = userUseCase.findById(id);
+
+        if (!targetUser.getEmail().equalsIgnoreCase(principal.getName())) {
+            throw new AccessDeniedException("Acesso negado a este usuário");
+        }
     }
 
     @PostMapping
@@ -79,7 +89,9 @@ public class UserController {
     @PutMapping("/{id}")
     public UserResponse update(
             @PathVariable Long id,
-            @Valid @RequestBody UpdateUserRequest updateUserRequest) {
+            @Valid @RequestBody UpdateUserRequest updateUserRequest, Principal principal) {
+
+        ensureOwnAccount(id, principal);
 
         User user = userUseCase.update(
                 id,
@@ -91,7 +103,9 @@ public class UserController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
+    public ResponseEntity<Void> delete(@PathVariable Long id, Principal principal) {
+        ensureOwnAccount(id, principal);
+
         userUseCase.delete(id);
         return ResponseEntity.noContent().build();
     }
