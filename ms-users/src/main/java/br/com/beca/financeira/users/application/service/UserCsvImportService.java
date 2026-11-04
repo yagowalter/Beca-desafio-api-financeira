@@ -139,6 +139,8 @@ public class UserCsvImportService implements UserCsvImportUseCase {
             @Email(message = "E-mail inválido")
             @Size(max = 150, message = "E-mail deve ter até 150 caracteres") String email,
 
-            @NotBlank(message = "Senha é obrigatória") String password) {
+            @NotBlank(message = "Senha é obrigatória")
+            @Size(min = 8)
+            String password) {
     }
 }

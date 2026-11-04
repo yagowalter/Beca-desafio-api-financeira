@@ -121,4 +121,16 @@ public class UserCsvImportServiceTest {
         assertTrue(result.errors().getFirst().message().contains("Senha é obrigatória"));
         verifyNoInteractions(userUseCase);
     }
+
+    @Test
+    void shouldRejectRowWithShortPassword() {
+        UserCsvImportResult result = service.importUsers(
+                "name;email;password\nAna;ana@example.com;curta"
+        );
+
+        assertEquals(0, result.importedCount());
+        assertEquals(1, result.failedCount());
+        assertEquals(2, result.errors().getFirst().lineNumber());
+        verifyNoInteractions(userUseCase);
+    }
 }

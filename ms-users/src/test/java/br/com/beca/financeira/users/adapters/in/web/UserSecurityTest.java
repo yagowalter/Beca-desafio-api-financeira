@@ -70,6 +70,20 @@ class UserSecurityTest {
     }
 
     @Test
+    void shouldRejectUserCreationWithShortPassword() throws Exception {
+        mockMvc.perform(post("/users")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                            {
+                                "name": "Ana",
+                                "email": "ana@example.com",
+                                "password": "curta"
+                            }
+                            """))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void shouldRejectRequestWithoutCredentials() throws Exception {
         mockMvc.perform(get("/users"))
                 .andExpect(status().isUnauthorized());
@@ -86,6 +100,22 @@ class UserSecurityTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].email").value(EMAIL))
                 .andExpect(jsonPath("$[0].passwordHash").doesNotHaveJsonPath());
+    }
+
+    @Test
+    void shouldReturnAuthenticatedUserProfile() throws Exception {
+        User user = userWithPasswordHash();
+
+        when(repository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
+        when(userUseCase.findByEmail(EMAIL)).thenReturn(user);
+
+        mockMvc.perform(get("/users/me")
+                        .header(HttpHeaders.AUTHORIZATION, basicAuth(PASSWORD)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.email").value(EMAIL))
+                .andExpect(jsonPath("$.password").doesNotHaveJsonPath())
+                .andExpect(jsonPath("$.passwordHash").doesNotHaveJsonPath());
     }
 
     @Test

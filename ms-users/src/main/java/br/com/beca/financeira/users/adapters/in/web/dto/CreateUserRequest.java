@@ -16,6 +16,7 @@ public class CreateUserRequest {
     private String email;
 
     @NotBlank(message = "Senha é obrigatória")
+    @Size(min = 8)
     private String password;
 
     public CreateUserRequest() {

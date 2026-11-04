@@ -50,6 +50,15 @@ public class UserService implements UserUseCase {
     }
 
     @Override
+    public User findByEmail(String email) {
+        String normalizedEmail = normalizeEmail(email);
+
+        return userRepositoryPort.findByEmail(normalizedEmail)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Usuário não encontrado"));
+    }
+
+    @Override
     public User update(Long id, String name, String email) {
         User user = findEntityById(id);
         String normalizedEmail = normalizeEmail(email);

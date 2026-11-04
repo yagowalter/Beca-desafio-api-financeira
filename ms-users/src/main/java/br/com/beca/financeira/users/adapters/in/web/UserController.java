@@ -81,6 +81,11 @@ public class UserController {
                 .toList();
     }
 
+    @GetMapping("/me")
+    public UserResponse findCurrentUser(Principal principal) {
+        return toResponse(userUseCase.findByEmail(principal.getName()));
+    }
+
     @GetMapping("/{id}")
     public UserResponse findById(@PathVariable Long id) {
         return toResponse(userUseCase.findById(id));
