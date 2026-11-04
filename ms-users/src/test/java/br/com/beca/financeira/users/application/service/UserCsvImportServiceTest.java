@@ -54,21 +54,27 @@ public class UserCsvImportServiceTest {
     @Test
     void shouldIgnoreBlankLineAndImportNameWithSemicolonInsideQuotes() {
         UserCsvImportResult result = service.importUsers(
-                "name;email\n\n\"Silva; Júnior\";ana@email.com"
+                "name;email;password\n\n\"Silva; Júnior\";ana@email.com;SenhaTeste123!"
         );
 
         assertEquals(1, result.importedCount());
         assertEquals(0, result.failedCount());
-        verify(userUseCase).create("Silva; Júnior", "ana@email.com");
+        verify(userUseCase).create(
+                "Silva; Júnior",
+                "ana@email.com",
+                "SenhaTeste123!"
+        );
     }
 
     @Test
     void shouldRecordDatabaseConstraintViolationAndContinueImport() {
         doThrow(new DataIntegrityViolationException("restrição do banco"))
-                .when(userUseCase).create("Ana", "ana@email.com");
+                .when(userUseCase).create("Ana", "ana@email.com", "SenhaAna123!");
 
         UserCsvImportResult result = service.importUsers(
-                "name;email\nAna;ana@email.com\nBruno;bruno@email.com"
+                "name;email;password\n"
+                        + "Ana;ana@email.com;SenhaAna123!\n"
+                        + "Bruno;bruno@email.com;SenhaBruno123!"
         );
 
         assertEquals(1, result.importedCount());
@@ -79,16 +85,18 @@ public class UserCsvImportServiceTest {
                 result.errors().getFirst().message()
         );
 
-        verify(userUseCase).create("Bruno", "bruno@email.com");
+        verify(userUseCase).create("Bruno", "bruno@email.com", "SenhaBruno123!");
     }
 
     @Test
     void shouldRecordDuplicateEmailAndContinueImport() {
         doThrow(new DuplicateResourceException("E-mail já cadastrado"))
-                .when(userUseCase).create("Ana", "ana@email.com");
+                .when(userUseCase).create("Ana", "ana@email.com", "SenhaAna123!");
 
         UserCsvImportResult result = service.importUsers(
-                "name;email\nAna;ana@email.com\nBruno;bruno@email.com"
+                "name;email;password\n"
+                        + "Ana;ana@email.com;SenhaAna123!\n"
+                        + "Bruno;bruno@email.com;SenhaBruno123!"
         );
 
         assertEquals(1, result.importedCount());
@@ -99,6 +107,30 @@ public class UserCsvImportServiceTest {
                 result.errors().getFirst().message()
         );
 
-        verify(userUseCase).create("Bruno", "bruno@email.com");
+        verify(userUseCase).create("Bruno", "bruno@email.com", "SenhaBruno123!");
+    }
+
+    @Test
+    void shouldRejectCsvRowWithoutPassword(){
+        UserCsvImportResult result = service.importUsers(
+                "name;email;password\nAna;ana@email.com;"
+        );
+
+        assertEquals(0, result.importedCount());
+        assertEquals(1, result.failedCount());
+        assertTrue(result.errors().getFirst().message().contains("Senha é obrigatória"));
+        verifyNoInteractions(userUseCase);
+    }
+
+    @Test
+    void shouldRejectRowWithShortPassword() {
+        UserCsvImportResult result = service.importUsers(
+                "name;email;password\nAna;ana@example.com;curta"
+        );
+
+        assertEquals(0, result.importedCount());
+        assertEquals(1, result.failedCount());
+        assertEquals(2, result.errors().getFirst().lineNumber());
+        verifyNoInteractions(userUseCase);
     }
 }
