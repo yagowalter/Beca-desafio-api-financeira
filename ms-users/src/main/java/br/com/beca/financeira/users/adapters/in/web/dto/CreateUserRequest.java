@@ -15,6 +15,10 @@ public class CreateUserRequest {
     @Size(max = 150)
     private String email;
 
+    @NotBlank(message = "Senha é obrigatória")
+    @Size(min = 8, message = "Senha deve ter no mínimo 8 caracteres")
+    private String password;
+
     public CreateUserRequest() {
     }
 
@@ -37,6 +41,14 @@ public class CreateUserRequest {
 
     public void setEmail(String email) {
         this.email = email == null ? null : email.trim();
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
     }
 }
 
