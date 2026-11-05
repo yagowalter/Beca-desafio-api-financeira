@@ -7,13 +7,19 @@ import br.com.beca.financeira.users.application.port.in.UserCsvImportResult;
 import br.com.beca.financeira.users.application.port.in.UserCsvImportUseCase;
 import br.com.beca.financeira.users.application.port.in.UserUseCase;
 import br.com.beca.financeira.users.domain.User;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.*;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.MediaType;
+import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 
 import java.io.IOException;
 import java.net.URI;
@@ -21,6 +27,8 @@ import java.nio.charset.StandardCharsets;
 import java.security.Principal;
 import java.util.List;
 
+
+@Tag(name = "Usuários" , description = "Cadastro, consulta, atualização e remoção de usuários")
 @RestController
 @RequestMapping("/users")
 public class UserController {
@@ -44,6 +52,54 @@ public class UserController {
         }
     }
 
+    @Operation(
+            summary = "Cadastrar usuário",
+            description = "Cria um usuário com nome, e-mail e senha. O cadastro é público."
+    )
+    @ApiResponse(
+            responseCode = "201",
+            description = "Usuário cadastrado"
+    )
+    @ApiResponse(
+            responseCode = "400",
+            description = "Nome, e-mail ou senha inválidos",
+            content = @Content(
+                    mediaType = "application/problem+json",
+                    schema = @Schema(implementation = ProblemDetail.class),
+                    examples = @ExampleObject(value = """
+                        {
+                          "type": "about:blank",
+                          "title": "Bad Request",
+                          "status": 400,
+                          "detail": "Um ou mais campos estão inválidos",
+                          "instance": "/users",
+                          "erros": [
+                            {
+                              "campo": "password",
+                              "mensagem": "Senha deve ter no mínimo 8 caracteres"
+                            }
+                          ]
+                        }
+                        """)
+            )
+    )
+    @ApiResponse(
+            responseCode = "409",
+            description = "E-mail já cadastrado",
+            content = @Content(
+                    mediaType = "application/problem+json",
+                    schema = @Schema(implementation = ProblemDetail.class),
+                    examples = @ExampleObject(value = """
+                        {
+                          "type": "about:blank",
+                          "title": "Conflict",
+                          "status": 409,
+                          "detail": "E-mail já cadastrado",
+                          "instance": "/users"
+                        }
+                        """)
+            )
+    )
     @PostMapping
     public ResponseEntity<UserResponse> create(
             @Valid @RequestBody CreateUserRequest createUserRequest) {
@@ -64,6 +120,13 @@ public class UserController {
         return ResponseEntity.created(location).body(userResponse);
     }
 
+    @SecurityRequirement(name = "basicAuth")
+    @Operation(
+            summary = "Importar usuários por CSV",
+            description = "Envie um arquivo CSV no campo 'file'. O cabeçalho obrigatório é name;email;password. Cada linha contém nome, e-mail e senha separados por ponto e vírgula."
+    )
+    @ApiResponse(responseCode = "200", description = "Resultado da importação, com quantidades importadas e erros por linha")
+    @ApiResponse(responseCode = "400", description = "Cabeçalho CSV inválido")
     @PostMapping(value = "/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<UserCsvImportResult> importCsv(
             @RequestParam("file") MultipartFile file
@@ -73,6 +136,11 @@ public class UserController {
         return ResponseEntity.ok(result);
     }
 
+    // GET /users
+    @Operation(summary = "Listar usuários",
+            description = "Retorna os cadastros de usuários. Requer autenticação Basic.")
+    @ApiResponse(responseCode = "200", description = "Lista de usuários retornada")
+    @SecurityRequirement(name = "basicAuth")
     @GetMapping
     public List<UserResponse> findAll() {
         return userUseCase.findAll()
@@ -81,16 +149,37 @@ public class UserController {
                 .toList();
     }
 
+    @Operation(
+            summary = "Consultar usuário autenticado",
+            description = "Retorna o cadastro associado às credenciais Basic enviadas."
+    )
+    @ApiResponse(responseCode = "200", description = "Dados do usuário autenticado")
+    @ApiResponse(responseCode = "404", description = "Usuário não encontrado")
+    @SecurityRequirement(name = "basicAuth")
     @GetMapping("/me")
     public UserResponse findCurrentUser(Principal principal) {
         return toResponse(userUseCase.findByEmail(principal.getName()));
     }
 
+    // GET /users/{id}
+    @Operation(summary = "Consultar usuário por ID",
+            description = "Retorna o cadastro correspondente ao ID informado.")
+    @ApiResponse(responseCode = "200", description = "Usuário encontrado")
+    @ApiResponse(responseCode = "404", description = "Usuário não encontrado")
+    @SecurityRequirement(name = "basicAuth")
     @GetMapping("/{id}")
     public UserResponse findById(@PathVariable Long id) {
         return toResponse(userUseCase.findById(id));
     }
 
+    // PUT /users/{id}
+    @Operation(summary = "Atualizar usuário",
+            description = "Atualiza nome e e-mail do próprio cadastro. Requer autenticação Basic.")
+    @ApiResponse(responseCode = "200", description = "Usuário atualizado")
+    @ApiResponse(responseCode = "400", description = "Dados inválidos")
+    @ApiResponse(responseCode = "403", description = "O usuário autenticado tentou alterar outro cadastro")
+    @ApiResponse(responseCode = "404", description = "Usuário não encontrado")
+    @SecurityRequirement(name = "basicAuth")
     @PutMapping("/{id}")
     public UserResponse update(
             @PathVariable Long id,
@@ -107,6 +196,13 @@ public class UserController {
         return toResponse(user);
     }
 
+    // DELETE /users/{id}
+    @Operation(summary = "Excluir usuário",
+            description = "Exclui o próprio cadastro. Requer autenticação Basic.")
+    @ApiResponse(responseCode = "204", description = "Usuário excluído")
+    @ApiResponse(responseCode = "403", description = "O usuário autenticado tentou excluir outro cadastro")
+    @ApiResponse(responseCode = "404", description = "Usuário não encontrado")
+    @SecurityRequirement(name = "basicAuth")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id, Principal principal) {
         ensureOwnAccount(id, principal);

@@ -17,6 +17,38 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+  ms-users:
+    build:
+      context: ./ms-users
+      dockerfile: Dockerfile
+    container_name: beca-ms-users
+    environment:
+      USERS_DB_URL: jdbc:postgresql://postgres-users:5432/${USERS_DB_NAME}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres-users:
+        condition: service_healthy
+  ms-transactions:
+    build:
+      context: ./ms-transactions
+      dockerfile: Dockerfile
+    container_name: beca-ms-transactions
+    environment:
+      TRANSACTIONS_DB_URL: jdbc:postgresql://postgres-transactions:5432/${TRANSACTIONS_DB_NAME}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      MOCKAPI_ACCOUNTS_URL: ${MOCKAPI_ACCOUNTS_URL}
+      MS_USERS_BASE_URL: http://ms-users:8080
+    ports:
+      - "8081:8081"
+    depends_on:
+      postgres-transactions:
+        condition: service_healthy
+      ms-users:
+        condition: service_started
 
   postgres-transactions:
     image: postgres:17-alpine
