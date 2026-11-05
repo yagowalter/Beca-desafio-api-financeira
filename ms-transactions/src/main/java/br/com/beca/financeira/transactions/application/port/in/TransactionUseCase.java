@@ -19,9 +19,5 @@ public interface TransactionUseCase {
 
     List<Transaction> findAllByUserId(Long userId);
 
-    List<Transaction> findAll();
-
-    Transaction findById(Long id);
-
     Transaction findByIdAndUserId(Long id, Long userId);
 }

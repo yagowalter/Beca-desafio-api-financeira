@@ -2,6 +2,7 @@ package br.com.beca.financeira.transactions.adapters.out.http;
 
 import br.com.beca.financeira.transactions.application.port.out.UserIdentityPort;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.authentication.AuthenticationServiceException;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
@@ -19,7 +20,7 @@ public class MsUsersIdentityAdapter implements UserIdentityPort {
             RestClient.Builder restClientBuilder,
             @Value("${ms-users.base-url}") String msUsersBaseUrl
     ) {
-        this.restClient = restClientBuilder
+        this.restClient = restClientBuilder.clone()
                 .baseUrl(msUsersBaseUrl)
                 .build();
     }
@@ -37,7 +38,7 @@ public class MsUsersIdentityAdapter implements UserIdentityPort {
                 .body(MsUserResponse.class);
 
         if (user == null || user.id() == null || user.email() == null) {
-            throw new IllegalStateException("MS-Users retornou uma identidade inválida");
+            throw new AuthenticationServiceException("MS-Users retornou uma identidade inválida");
         }
 
         return new AuthenticatedUser(user.id(), user.email());

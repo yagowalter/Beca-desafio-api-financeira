@@ -12,6 +12,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.authentication.AuthenticationServiceException;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.client.HttpClientErrorException;
@@ -196,5 +197,18 @@ class TransactionSecurityTest {
                 .andExpect(status().isNotFound());
 
         verify(transactionUseCase).findByIdAndUserId(42L, 7L);
+    }
+
+    @Test
+    void shouldReturnServiceUnavailableWhenMsUsersIsUnavailable() throws Exception {
+        when(userIdentityPort.authenticate("ana@example.com", "SenhaTeste123!"))
+                .thenThrow(new AuthenticationServiceException("MS-Users está indisponível"));
+
+        mockMvc.perform(get("/transactions")
+                        .header(
+                                HttpHeaders.AUTHORIZATION,
+                                basicAuth("ana@example.com", "SenhaTeste123!")
+                        ))
+                .andExpect(status().isServiceUnavailable());
     }
 }
