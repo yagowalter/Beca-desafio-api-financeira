@@ -13,7 +13,11 @@ public interface TransactionRepositoryPort {
 
     List<Transaction> findAll();
 
+    List<Transaction> findAllByUserId(Long userId);
+
     Optional<Transaction> findById(Long id);
+
+    Optional<Transaction> findByIdAndUserId(Long id, Long userId);
 
     BigDecimal sumApprovedOutflowsByUserIdAndPeriod(
             Long userId,

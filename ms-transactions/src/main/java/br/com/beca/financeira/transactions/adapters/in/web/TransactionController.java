@@ -11,6 +11,8 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import br.com.beca.financeira.transactions.adapters.in.security.MsUsersAuthenticationProvider.UserPrincipal;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -32,10 +34,11 @@ public class TransactionController {
 
     @PostMapping
     public ResponseEntity<Transaction> create(
-            @Valid @RequestBody CreateTransactionRequest request
+            @Valid @RequestBody CreateTransactionRequest request,
+            @AuthenticationPrincipal UserPrincipal principal
     ) {
         Transaction transaction = transactionUseCase.create(
-                request.getUserId(),
+                principal.id(),
                 request.getDescription(),
                 request.getAmount(),
                 request.getType(),
@@ -46,13 +49,15 @@ public class TransactionController {
     }
 
     @GetMapping
-    public ResponseEntity<List<Transaction>> findAll() {
-        return ResponseEntity.ok(transactionUseCase.findAll());
+    public ResponseEntity<List<Transaction>> findAll(
+            @AuthenticationPrincipal UserPrincipal principal
+    ) {
+        return ResponseEntity.ok(transactionUseCase.findAllByUserId(principal.id()));
     }
 
     @GetMapping("/analysis")
     public ResponseEntity<ExpenseAnalysis> analyzeExpenses(
-            @RequestParam Long userId,
+            @AuthenticationPrincipal UserPrincipal principal,
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam(required = false)
@@ -60,7 +65,7 @@ public class TransactionController {
     ) {
         return ResponseEntity.ok(
                 expenseAnalysisUseCase.analyzeExpenses(
-                        userId,
+                        principal.id(),
                         startDate,
                         endDate
                 )
@@ -68,8 +73,12 @@ public class TransactionController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Transaction> findById(@PathVariable Long id) {
-        return ResponseEntity.ok(transactionUseCase.findById(id));
+    public ResponseEntity<Transaction> findById(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserPrincipal principal
+    ) {
+        return ResponseEntity.ok(
+                transactionUseCase.findByIdAndUserId(id , principal.id()));
     }
 
 

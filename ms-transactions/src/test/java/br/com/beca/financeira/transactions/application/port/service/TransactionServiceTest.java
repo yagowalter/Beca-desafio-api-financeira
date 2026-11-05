@@ -5,6 +5,7 @@ import br.com.beca.financeira.transactions.application.port.out.AccountLimitsPor
 import br.com.beca.financeira.transactions.application.port.out.ExchangeRatePort;
 import br.com.beca.financeira.transactions.application.port.out.TransactionRepositoryPort;
 import br.com.beca.financeira.transactions.domain.Transaction;
+import br.com.beca.financeira.transactions.domain.TransactionStatus;
 import br.com.beca.financeira.transactions.domain.TransactionType;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -212,5 +213,212 @@ class TransactionServiceTest {
         assertFalse(savedTransaction.getValue().isExchangeRatesAvailable());
         verify(exchangeRatePort, times(1))
                 .findByCurrencyAndDate("USD", LocalDate.now());
+    }
+
+    @Test
+    void shouldRejectTransactionWhenBalanceIsInsufficient() {
+        TransactionRepositoryPort transactionRepositoryPort =
+                mock(TransactionRepositoryPort.class);
+        AccountLimitsPort accountLimitsPort = mock(AccountLimitsPort.class);
+        ExchangeRatePort exchangeRatePort = mock(ExchangeRatePort.class);
+
+        LocalDate today = LocalDate.now();
+
+        when(exchangeRatePort.findByCurrencyAndDate("USD", today))
+                .thenReturn(new ExchangeRatePort.ExchangeRate(
+                        new BigDecimal("5.00"), today
+                ));
+        when(exchangeRatePort.findByCurrencyAndDate("EUR", today))
+                .thenReturn(new ExchangeRatePort.ExchangeRate(
+                        new BigDecimal("5.50"), today
+                ));
+        when(accountLimitsPort.findByUserId(7L))
+                .thenReturn(new AccountLimitsPort.AccountLimits(
+                        new BigDecimal("100.00"),
+                        new BigDecimal("500.00"),
+                        new BigDecimal("200.00")
+                ));
+
+        TransactionService service = new TransactionService(
+                transactionRepositoryPort,
+                accountLimitsPort,
+                exchangeRatePort
+        );
+
+        service.create(
+                7L,
+                "Compra teste",
+                new BigDecimal("150.00"),
+                TransactionType.PURCHASE,
+                "Alimentação",
+                null
+        );
+
+        ArgumentCaptor<Transaction> savedTransaction =
+                ArgumentCaptor.forClass(Transaction.class);
+        verify(transactionRepositoryPort).save(savedTransaction.capture());
+
+        assertEquals(TransactionStatus.REJECTED, savedTransaction.getValue().getStatus());
+        assertEquals(
+                "Saldo insuficiente",
+                savedTransaction.getValue().getRejectionReason()
+        );
+        verify(transactionRepositoryPort, never())
+                .sumApprovedOutflowsByUserIdAndPeriod(any(), any(), any());
+    }
+
+    @Test
+    void shouldRejectTransactionWhenPerTransactionLimitIsExceeded() {
+        TransactionRepositoryPort transactionRepositoryPort =
+                mock(TransactionRepositoryPort.class);
+        AccountLimitsPort accountLimitsPort = mock(AccountLimitsPort.class);
+        ExchangeRatePort exchangeRatePort = mock(ExchangeRatePort.class);
+
+        LocalDate today = LocalDate.now();
+
+        when(exchangeRatePort.findByCurrencyAndDate("USD", today))
+                .thenReturn(new ExchangeRatePort.ExchangeRate(
+                        new BigDecimal("5.00"), today
+                ));
+        when(exchangeRatePort.findByCurrencyAndDate("EUR", today))
+                .thenReturn(new ExchangeRatePort.ExchangeRate(
+                        new BigDecimal("5.50"), today
+                ));
+        when(accountLimitsPort.findByUserId(7L))
+                .thenReturn(new AccountLimitsPort.AccountLimits(
+                        new BigDecimal("500.00"),
+                        new BigDecimal("800.00"),
+                        new BigDecimal("100.00")
+                ));
+
+        TransactionService service = new TransactionService(
+                transactionRepositoryPort,
+                accountLimitsPort,
+                exchangeRatePort
+        );
+
+        service.create(
+                7L,
+                "Compra teste",
+                new BigDecimal("150.00"),
+                TransactionType.PURCHASE,
+                "Alimentação",
+                null
+        );
+
+        ArgumentCaptor<Transaction> savedTransaction =
+                ArgumentCaptor.forClass(Transaction.class);
+        verify(transactionRepositoryPort).save(savedTransaction.capture());
+
+        assertEquals(TransactionStatus.REJECTED, savedTransaction.getValue().getStatus());
+        assertEquals(
+                "Valor acima do limite por transação",
+                savedTransaction.getValue().getRejectionReason()
+        );
+        verify(transactionRepositoryPort, never())
+                .sumApprovedOutflowsByUserIdAndPeriod(any(), any(), any());
+    }
+
+    @Test
+    void shouldRejectTransactionWhenDailyLimitIsExceeded() {
+        TransactionRepositoryPort transactionRepositoryPort =
+                mock(TransactionRepositoryPort.class);
+        AccountLimitsPort accountLimitsPort = mock(AccountLimitsPort.class);
+        ExchangeRatePort exchangeRatePort = mock(ExchangeRatePort.class);
+
+        LocalDate today = LocalDate.now();
+
+        when(exchangeRatePort.findByCurrencyAndDate("USD", today))
+                .thenReturn(new ExchangeRatePort.ExchangeRate(
+                        new BigDecimal("5.00"), today
+                ));
+        when(exchangeRatePort.findByCurrencyAndDate("EUR", today))
+                .thenReturn(new ExchangeRatePort.ExchangeRate(
+                        new BigDecimal("5.50"), today
+                ));
+        when(accountLimitsPort.findByUserId(7L))
+                .thenReturn(new AccountLimitsPort.AccountLimits(
+                        new BigDecimal("500.00"),
+                        new BigDecimal("200.00"),
+                        new BigDecimal("300.00")
+                ));
+        when(transactionRepositoryPort.sumApprovedOutflowsByUserIdAndPeriod(
+                eq(7L), any(), any()
+        )).thenReturn(new BigDecimal("150.00"));
+
+        TransactionService service = new TransactionService(
+                transactionRepositoryPort,
+                accountLimitsPort,
+                exchangeRatePort
+        );
+
+        service.create(
+                7L,
+                "Compra teste",
+                new BigDecimal("100.00"),
+                TransactionType.PURCHASE,
+                "Alimentação",
+                null
+        );
+
+        ArgumentCaptor<Transaction> savedTransaction =
+                ArgumentCaptor.forClass(Transaction.class);
+        verify(transactionRepositoryPort).save(savedTransaction.capture());
+
+        assertEquals(TransactionStatus.REJECTED, savedTransaction.getValue().getStatus());
+        assertEquals(
+                "Limite diário excedido",
+                savedTransaction.getValue().getRejectionReason()
+        );
+    }
+
+    @Test
+    void shouldApproveTransactionWhenBalanceAndLimitsAreSufficient() {
+        TransactionRepositoryPort transactionRepositoryPort =
+                mock(TransactionRepositoryPort.class);
+        AccountLimitsPort accountLimitsPort = mock(AccountLimitsPort.class);
+        ExchangeRatePort exchangeRatePort = mock(ExchangeRatePort.class);
+
+        LocalDate today = LocalDate.now();
+
+        when(exchangeRatePort.findByCurrencyAndDate("USD", today))
+                .thenReturn(new ExchangeRatePort.ExchangeRate(
+                        new BigDecimal("5.00"), today
+                ));
+        when(exchangeRatePort.findByCurrencyAndDate("EUR", today))
+                .thenReturn(new ExchangeRatePort.ExchangeRate(
+                        new BigDecimal("5.50"), today
+                ));
+        when(accountLimitsPort.findByUserId(7L))
+                .thenReturn(new AccountLimitsPort.AccountLimits(
+                        new BigDecimal("500.00"),
+                        new BigDecimal("300.00"),
+                        new BigDecimal("200.00")
+                ));
+        when(transactionRepositoryPort.sumApprovedOutflowsByUserIdAndPeriod(
+                eq(7L), any(), any()
+        )).thenReturn(new BigDecimal("50.00"));
+
+        TransactionService service = new TransactionService(
+                transactionRepositoryPort,
+                accountLimitsPort,
+                exchangeRatePort
+        );
+
+        service.create(
+                7L,
+                "Compra teste",
+                new BigDecimal("100.00"),
+                TransactionType.PURCHASE,
+                "Alimentação",
+                null
+        );
+
+        ArgumentCaptor<Transaction> savedTransaction =
+                ArgumentCaptor.forClass(Transaction.class);
+        verify(transactionRepositoryPort).save(savedTransaction.capture());
+
+        assertEquals(TransactionStatus.APPROVED, savedTransaction.getValue().getStatus());
+        assertNull(savedTransaction.getValue().getRejectionReason());
     }
 }

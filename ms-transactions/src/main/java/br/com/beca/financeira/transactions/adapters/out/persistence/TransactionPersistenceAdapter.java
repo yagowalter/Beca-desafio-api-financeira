@@ -36,8 +36,22 @@ public class TransactionPersistenceAdapter implements TransactionRepositoryPort 
     }
 
     @Override
+    public List<Transaction> findAllByUserId(Long userId) {
+        return transactionJpaRepository.findAllByUserId(userId)
+                .stream()
+                .map(TransactionEntity::toDomain)
+                .toList();
+    }
+
+    @Override
     public Optional<Transaction> findById(Long id) {
         return transactionJpaRepository.findById(id).map(TransactionEntity::toDomain);
+    }
+
+    @Override
+    public Optional<Transaction> findByIdAndUserId(Long id, Long userId) {
+        return transactionJpaRepository.findByIdAndUserId(id, userId)
+                .map(TransactionEntity::toDomain);
     }
 
     @Override

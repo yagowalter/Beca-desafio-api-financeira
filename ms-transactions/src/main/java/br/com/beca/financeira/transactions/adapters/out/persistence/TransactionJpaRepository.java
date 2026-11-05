@@ -3,10 +3,12 @@ package br.com.beca.financeira.transactions.adapters.out.persistence;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import br.com.beca.financeira.transactions.adapters.out.persistence.TransactionEntity;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 public interface TransactionJpaRepository
         extends JpaRepository
@@ -53,4 +55,7 @@ public interface TransactionJpaRepository
             @Param("endExclusive") LocalDateTime endExclusive
     );
 
+    List<TransactionEntity> findAllByUserId(Long userId);
+
+    Optional<TransactionEntity> findByIdAndUserId(Long id, Long userId);
 }
