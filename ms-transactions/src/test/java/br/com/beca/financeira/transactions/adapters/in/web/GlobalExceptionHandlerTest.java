@@ -2,8 +2,10 @@ package br.com.beca.financeira.transactions.adapters.in.web;
 
 import br.com.beca.financeira.transactions.application.port.service.AccountLimitsUnavailableException;
 import br.com.beca.financeira.transactions.application.port.service.AccountNotFoundException;
+import br.com.beca.financeira.transactions.application.port.service.TransactionNotFoundException;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -34,5 +36,15 @@ class GlobalExceptionHandlerTest {
                 "Não foi possível consultar saldo e limtes da conta",
                 problem.getDetail()
         );
+    }
+
+    @Test
+    void shouldReturnNotFoundWhenTransactionDoesNotExist() {
+        ProblemDetail response = handler.handleNotFound(
+                new TransactionNotFoundException("Transação não encontrada")
+        );
+
+        assertEquals(404, response.getStatus());
+        assertEquals("Transação não encontrada", response.getDetail());
     }
 }

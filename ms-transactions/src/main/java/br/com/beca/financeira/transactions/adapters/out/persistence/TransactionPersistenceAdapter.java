@@ -83,4 +83,21 @@ public class TransactionPersistenceAdapter implements TransactionRepositoryPort 
                 .map(TransactionEntity::toDomain)
                 .toList();
     }
+
+    @Override
+    public List<Transaction> findAllByUserIdAndPeriod(
+            Long userId,
+            LocalDateTime startInclusive,
+            LocalDateTime endExclusive
+    ) {
+        return transactionJpaRepository
+                .findAllByUserIdAndOccurredAtGreaterThanEqualAndOccurredAtLessThan(
+                        userId,
+                        startInclusive,
+                        endExclusive
+                )
+                .stream()
+                .map(TransactionEntity::toDomain)
+                .toList();
+    }
 }

@@ -9,8 +9,10 @@ import org.springframework.stereotype.Service;
 import br.com.beca.financeira.transactions.application.port.out.AccountLimitsPort;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClientException;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -131,7 +133,6 @@ public class TransactionService implements TransactionUseCase {
         return exception.getResponseBodyAsString().contains("NO_TODAY_DATE");
     }
 
-
     @Override
     public List<Transaction> findAllByUserId(Long userId) {
         return transactionRepositoryPort.findAllByUserId(userId);
@@ -142,6 +143,31 @@ public class TransactionService implements TransactionUseCase {
         return transactionRepositoryPort.findByIdAndUserId(id, userId)
                 .orElseThrow(() ->
                         new TransactionNotFoundException("Transação não encontrada"));
+    }
+
+    @Override
+    public List<Transaction> findAllByUserIdAndPeriod(
+            Long userId,
+            LocalDate startDate,
+            LocalDate endDate
+    ) {
+        if (userId == null || userId <= 0) {
+            throw new IllegalArgumentException("Usuário inválido");
+        }
+        if (startDate == null || endDate == null) {
+            throw new IllegalArgumentException("Informe a data inicial e a data final");
+        }
+        if (endDate.isBefore(startDate)) {
+            throw new IllegalArgumentException(
+                    "A data final não pode ser anterior à data inicial"
+            );
+        }
+
+        return transactionRepositoryPort.findAllByUserIdAndPeriod(
+                userId,
+                startDate.atStartOfDay(),
+                endDate.plusDays(1).atStartOfDay()
+        );
     }
 
 }

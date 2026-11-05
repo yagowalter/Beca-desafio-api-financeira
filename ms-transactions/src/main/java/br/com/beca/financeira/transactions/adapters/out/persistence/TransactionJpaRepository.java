@@ -57,5 +57,11 @@ public interface TransactionJpaRepository
 
     List<TransactionEntity> findAllByUserId(Long userId);
 
+    List<TransactionEntity> findAllByUserIdAndOccurredAtGreaterThanEqualAndOccurredAtLessThan(
+            Long userId,
+            LocalDateTime startInclusive,
+            LocalDateTime endExclusive
+    );
+
     Optional<TransactionEntity> findByIdAndUserId(Long id, Long userId);
 }
