@@ -90,16 +90,23 @@ class UserSecurityTest {
     }
 
     @Test
-    void shouldAllowRequestWithValidCredentials() throws Exception {
-        User user = userWithPasswordHash();
-        when(repository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
-        when(userUseCase.findAll()).thenReturn(List.of(user));
+    void shouldForbidViewingAnotherUsersAccount() throws Exception {
+        when(repository.findByEmail(EMAIL))
+                .thenReturn(Optional.of(userWithPasswordHash()));
 
-        mockMvc.perform(get("/users")
+        when(userUseCase.findById(2L))
+                .thenReturn(new User(
+                        2L,
+                        "Bruno",
+                        "bruno@example.com",
+                        passwordEncoder.encode(PASSWORD)
+                ));
+
+        mockMvc.perform(get("/users/2")
                         .header(HttpHeaders.AUTHORIZATION, basicAuth(PASSWORD)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].email").value(EMAIL))
-                .andExpect(jsonPath("$[0].passwordHash").doesNotHaveJsonPath());
+                .andExpect(status().isForbidden());
+
+        verify(userUseCase, never()).findByEmail("bruno@example.com");
     }
 
     @Test
@@ -222,6 +229,24 @@ class UserSecurityTest {
                 .andExpect(status().isNoContent());
 
         verify(userUseCase).delete(1L);
+    }
+
+    @Test
+    void shouldForbidAccessingAnotherUsersAccount() throws Exception {
+        when(repository.findByEmail(EMAIL))
+                .thenReturn(Optional.of(userWithPasswordHash()));
+
+        when(userUseCase.findById(2L))
+                .thenReturn(new User(
+                        2L,
+                        "Bruno",
+                        "bruno@example.com",
+                        passwordEncoder.encode(PASSWORD)
+                ));
+
+        mockMvc.perform(get("/users/2")
+                        .header(HttpHeaders.AUTHORIZATION, basicAuth(PASSWORD)))
+                .andExpect(status().isForbidden());
     }
 
 }

@@ -25,8 +25,6 @@ import java.io.IOException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.security.Principal;
-import java.util.List;
-
 
 @Tag(name = "Usuários" , description = "Cadastro, consulta, atualização e remoção de usuários")
 @RestController
@@ -136,19 +134,6 @@ public class UserController {
         return ResponseEntity.ok(result);
     }
 
-    // GET /users
-    @Operation(summary = "Listar usuários",
-            description = "Retorna os cadastros de usuários. Requer autenticação Basic.")
-    @ApiResponse(responseCode = "200", description = "Lista de usuários retornada")
-    @SecurityRequirement(name = "basicAuth")
-    @GetMapping
-    public List<UserResponse> findAll() {
-        return userUseCase.findAll()
-                .stream()
-                .map(this::toResponse)
-                .toList();
-    }
-
     @Operation(
             summary = "Consultar usuário autenticado",
             description = "Retorna o cadastro associado às credenciais Basic enviadas."
@@ -162,13 +147,17 @@ public class UserController {
     }
 
     // GET /users/{id}
-    @Operation(summary = "Consultar usuário por ID",
-            description = "Retorna o cadastro correspondente ao ID informado.")
+    @Operation(
+            summary = "Consultar usuário por ID",
+            description = "Retorna apenas o cadastro do próprio usuário autenticado."
+    )
     @ApiResponse(responseCode = "200", description = "Usuário encontrado")
+    @ApiResponse(responseCode = "403", description = "Acesso negado a outro usuário")
     @ApiResponse(responseCode = "404", description = "Usuário não encontrado")
     @SecurityRequirement(name = "basicAuth")
     @GetMapping("/{id}")
-    public UserResponse findById(@PathVariable Long id) {
+    public UserResponse findById(@PathVariable Long id, Principal principal) {
+        ensureOwnAccount(id, principal);
         return toResponse(userUseCase.findById(id));
     }
 
