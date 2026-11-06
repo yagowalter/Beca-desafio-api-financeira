@@ -90,17 +90,21 @@ class UserSecurityTest {
     }
 
     @Test
-    void shouldAllowRequestWithValidCredentials() throws Exception {
-        User user = userWithPasswordHash();
-        when(repository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
-        when(userUseCase.findAll()).thenReturn(List.of(user));
+    void shouldForbidViewingAnotherUsersAccount() throws Exception {
+        User authenticatedUser = userWithPasswordHash();
 
-        mockMvc.perform(get("/users")
+        when(repository.findByEmail(EMAIL))
+                .thenReturn(Optional.of(authenticatedUser));
+        when(userUseCase.findByEmail(EMAIL))
+                .thenReturn(authenticatedUser);
+
+        mockMvc.perform(get("/users/2")
                         .header(HttpHeaders.AUTHORIZATION, basicAuth(PASSWORD)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].email").value(EMAIL))
-                .andExpect(jsonPath("$[0].passwordHash").doesNotHaveJsonPath());
+                .andExpect(status().isForbidden());
+
+        verify(userUseCase, never()).findById(2L);
     }
+
 
     @Test
     void shouldReturnAuthenticatedUserProfile() throws Exception {
@@ -139,37 +143,36 @@ class UserSecurityTest {
 
     @Test
     void shouldForbidUpdatingAnotherUsersAccount() throws Exception {
+        User authenticatedUser = userWithPasswordHash();
+
         when(repository.findByEmail(EMAIL))
-                .thenReturn(Optional.of(userWithPasswordHash()));
-        when(userUseCase.findById(2L))
-                .thenReturn(new User(
-                        2L,
-                        "Bruno",
-                        "bruno@example.com",
-                        passwordEncoder.encode(PASSWORD)
-                ));
+                .thenReturn(Optional.of(authenticatedUser));
+        when(userUseCase.findByEmail(EMAIL))
+                .thenReturn(authenticatedUser);
 
         mockMvc.perform(put("/users/2")
                         .header(HttpHeaders.AUTHORIZATION, basicAuth(PASSWORD))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {
-                                    "name": "Bruno Atualizado",
-                                    "email": "bruno.atualizado@example.com"
-                                }
-                                """))
+                            {
+                                "name": "Bruno Atualizado",
+                                "email": "bruno.atualizado@example.com"
+                            }
+                            """))
                 .andExpect(status().isForbidden());
 
-        verify(userUseCase, never())
-                .update(2L, "Bruno Atualizado", "bruno.atualizado2example.com");
+        verify(userUseCase, never()).findById(2L);
+        verify(userUseCase, never()).update(anyLong(), anyString(), anyString());
     }
 
     @Test
     void shouldAllowUpdatingOwnAccount() throws Exception {
+        User authenticatedUser = userWithPasswordHash();
+
         when(repository.findByEmail(EMAIL))
-                .thenReturn(Optional.of(userWithPasswordHash()));
-        when(userUseCase.findById(1L))
-                .thenReturn(userWithPasswordHash());
+                .thenReturn(Optional.of(authenticatedUser));
+        when(userUseCase.findByEmail(EMAIL))
+                .thenReturn(authenticatedUser);
         when(userUseCase.update(1L, "Ana Atualizada", "ana.atualizada@example.com"))
                 .thenReturn(new User(
                         1L,
@@ -182,46 +185,84 @@ class UserSecurityTest {
                         .header(HttpHeaders.AUTHORIZATION, basicAuth(PASSWORD))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {
-                                    "name": "Ana Atualizada",
-                                    "email": "ana.atualizada@example.com"
-                                }
-                                """))
+                            {
+                                "name": "Ana Atualizada",
+                                "email": "ana.atualizada@example.com"
+                            }
+                            """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.email").value("ana.atualizada@example.com"));
+
+        verify(userUseCase).update(1L, "Ana Atualizada", "ana.atualizada@example.com");
     }
 
     @Test
     void shouldForbidDeletingAnotherUsersAccount() throws Exception {
+        User authenticatedUser = userWithPasswordHash();
+
         when(repository.findByEmail(EMAIL))
-                .thenReturn(Optional.of(userWithPasswordHash()));
-        when(userUseCase.findById(2L))
-                .thenReturn(new User(
-                        2L,
-                        "Bruno",
-                        "bruno@example.com",
-                        passwordEncoder.encode(PASSWORD)
-                ));
+                .thenReturn(Optional.of(authenticatedUser));
+        when(userUseCase.findByEmail(EMAIL))
+                .thenReturn(authenticatedUser);
 
         mockMvc.perform(delete("/users/2")
                         .header(HttpHeaders.AUTHORIZATION, basicAuth(PASSWORD)))
                 .andExpect(status().isForbidden());
 
-        verify(userUseCase, never()).delete(2L);
+        verify(userUseCase, never()).findById(2L);
+        verify(userUseCase, never()).delete(anyLong());
     }
 
     @Test
     void shouldAllowDeletingOwnAccount() throws Exception {
+        User authenticatedUser = userWithPasswordHash();
+
         when(repository.findByEmail(EMAIL))
-                .thenReturn(Optional.of(userWithPasswordHash()));
-        when(userUseCase.findById(1L))
-                .thenReturn(userWithPasswordHash());
+                .thenReturn(Optional.of(authenticatedUser));
+        when(userUseCase.findByEmail(EMAIL))
+                .thenReturn(authenticatedUser);
 
         mockMvc.perform(delete("/users/1")
                         .header(HttpHeaders.AUTHORIZATION, basicAuth(PASSWORD)))
                 .andExpect(status().isNoContent());
 
         verify(userUseCase).delete(1L);
+    }
+
+
+    @Test
+    void shouldAllowViewingOwnAccount() throws Exception {
+        User authenticatedUser = userWithPasswordHash();
+
+        when(repository.findByEmail(EMAIL))
+                .thenReturn(Optional.of(authenticatedUser));
+        when(userUseCase.findByEmail(EMAIL))
+                .thenReturn(authenticatedUser);
+        when(userUseCase.findById(1L))
+                .thenReturn(authenticatedUser);
+
+        mockMvc.perform(get("/users/1")
+                        .header(HttpHeaders.AUTHORIZATION, basicAuth(PASSWORD)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.email").value(EMAIL))
+                .andExpect(jsonPath("$.passwordHash").doesNotHaveJsonPath());
+    }
+
+    @Test
+    void shouldForbidViewingNonexistentUserId() throws Exception {
+        User authenticatedUser = userWithPasswordHash();
+
+        when(repository.findByEmail(EMAIL))
+                .thenReturn(Optional.of(authenticatedUser));
+        when(userUseCase.findByEmail(EMAIL))
+                .thenReturn(authenticatedUser);
+
+        mockMvc.perform(get("/users/999999")
+                        .header(HttpHeaders.AUTHORIZATION, basicAuth(PASSWORD)))
+                .andExpect(status().isForbidden());
+
+        verify(userUseCase, never()).findById(999999L);
     }
 
 }

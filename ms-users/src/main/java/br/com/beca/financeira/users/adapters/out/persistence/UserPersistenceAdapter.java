@@ -1,12 +1,10 @@
 package br.com.beca.financeira.users.adapters.out.persistence;
 
-import br.com.beca.financeira.users.adapters.out.persistence.UserEntity;
 import br.com.beca.financeira.users.application.port.out.UserRepositoryPort;
 import br.com.beca.financeira.users.domain.User;
 import br.com.beca.financeira.users.repository.UserJpaRepository;
 import org.springframework.stereotype.Component;
 
-import java.util.List;
 import java.util.Optional;
 
 @Component
@@ -22,14 +20,6 @@ public class UserPersistenceAdapter implements UserRepositoryPort {
     public User save(User user){
         UserEntity entity = new UserEntity(user);
         return userJpaRepository.save(entity).toDomain();
-    }
-
-    @Override
-    public List<User> findAll(){
-        return userJpaRepository.findAll()
-                .stream()
-                .map(UserEntity::toDomain)
-                .toList();
     }
 
     @Override

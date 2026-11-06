@@ -6,7 +6,6 @@ import br.com.beca.financeira.users.application.port.out.UserRepositoryPort;
 import br.com.beca.financeira.users.domain.User;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
 import java.util.Locale;
 
 @Service
@@ -36,12 +35,6 @@ public class UserService implements UserUseCase {
         return userRepositoryPort.save(
                 new User(null, name, normalizedEmail, passwordHash)
         );
-    }
-
-
-    @Override
-    public List<User> findAll() {
-        return userRepositoryPort.findAll();
     }
 
     @Override
