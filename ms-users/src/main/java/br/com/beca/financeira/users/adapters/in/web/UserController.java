@@ -25,10 +25,8 @@ import java.io.IOException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.security.Principal;
-import java.util.List;
 
-
-@Tag(name = "Usuários" , description = "Cadastro, consulta, atualização e remoção de usuários")
+@Tag(name = "Usuários", description = "Cadastro, consulta, atualização e remoção de usuários")
 @RestController
 @RequestMapping("/users")
 public class UserController {
@@ -45,9 +43,9 @@ public class UserController {
     }
 
     private void ensureOwnAccount(Long id, Principal principal) {
-        User targetUser = userUseCase.findById(id);
+        User authenticatedUser = userUseCase.findByEmail(principal.getName());
 
-        if (!targetUser.getEmail().equalsIgnoreCase(principal.getName())) {
+        if (!authenticatedUser.getId().equals(id)) {
             throw new AccessDeniedException("Acesso negado a este usuário");
         }
     }
@@ -67,20 +65,20 @@ public class UserController {
                     mediaType = "application/problem+json",
                     schema = @Schema(implementation = ProblemDetail.class),
                     examples = @ExampleObject(value = """
-                        {
-                          "type": "about:blank",
-                          "title": "Bad Request",
-                          "status": 400,
-                          "detail": "Um ou mais campos estão inválidos",
-                          "instance": "/users",
-                          "erros": [
                             {
-                              "campo": "password",
-                              "mensagem": "Senha deve ter no mínimo 8 caracteres"
+                              "type": "about:blank",
+                              "title": "Bad Request",
+                              "status": 400,
+                              "detail": "Um ou mais campos estão inválidos",
+                              "instance": "/users",
+                              "erros": [
+                                {
+                                  "campo": "password",
+                                  "mensagem": "Senha deve ter no mínimo 8 caracteres"
+                                }
+                              ]
                             }
-                          ]
-                        }
-                        """)
+                            """)
             )
     )
     @ApiResponse(
@@ -90,14 +88,14 @@ public class UserController {
                     mediaType = "application/problem+json",
                     schema = @Schema(implementation = ProblemDetail.class),
                     examples = @ExampleObject(value = """
-                        {
-                          "type": "about:blank",
-                          "title": "Conflict",
-                          "status": 409,
-                          "detail": "E-mail já cadastrado",
-                          "instance": "/users"
-                        }
-                        """)
+                            {
+                              "type": "about:blank",
+                              "title": "Conflict",
+                              "status": 409,
+                              "detail": "E-mail já cadastrado",
+                              "instance": "/users"
+                            }
+                            """)
             )
     )
     @PostMapping
@@ -136,19 +134,6 @@ public class UserController {
         return ResponseEntity.ok(result);
     }
 
-    // GET /users
-    @Operation(summary = "Listar usuários",
-            description = "Retorna os cadastros de usuários. Requer autenticação Basic.")
-    @ApiResponse(responseCode = "200", description = "Lista de usuários retornada")
-    @SecurityRequirement(name = "basicAuth")
-    @GetMapping
-    public List<UserResponse> findAll() {
-        return userUseCase.findAll()
-                .stream()
-                .map(this::toResponse)
-                .toList();
-    }
-
     @Operation(
             summary = "Consultar usuário autenticado",
             description = "Retorna o cadastro associado às credenciais Basic enviadas."
@@ -162,13 +147,17 @@ public class UserController {
     }
 
     // GET /users/{id}
-    @Operation(summary = "Consultar usuário por ID",
-            description = "Retorna o cadastro correspondente ao ID informado.")
+    @Operation(
+            summary = "Consultar usuário por ID",
+            description = "Retorna apenas o cadastro do próprio usuário autenticado."
+    )
     @ApiResponse(responseCode = "200", description = "Usuário encontrado")
+    @ApiResponse(responseCode = "403", description = "Acesso negado a outro usuário")
     @ApiResponse(responseCode = "404", description = "Usuário não encontrado")
     @SecurityRequirement(name = "basicAuth")
     @GetMapping("/{id}")
-    public UserResponse findById(@PathVariable Long id) {
+    public UserResponse findById(@PathVariable Long id, Principal principal) {
+        ensureOwnAccount(id, principal);
         return toResponse(userUseCase.findById(id));
     }
 

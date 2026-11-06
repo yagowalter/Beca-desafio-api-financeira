@@ -111,9 +111,8 @@ As rotas protegidas usam HTTP Basic. No Swagger, clique em **Authorize** e infor
 |---|---|---|---|
 | `POST` | `/users` | Público | Cadastrar usuário |
 | `POST` | `/users/import` | Basic Auth | Importar usuários por CSV |
-| `GET` | `/users` | Basic Auth | Listar usuários |
 | `GET` | `/users/me` | Basic Auth | Consultar usuário autenticado |
-| `GET` | `/users/{id}` | Basic Auth | Consultar usuário por ID |
+| `GET` | `/users/{id}` | Basic Auth | Consultar o próprio usuário por ID |
 | `PUT` | `/users/{id}` | Basic Auth | Atualizar o próprio cadastro |
 | `DELETE` | `/users/{id}` | Basic Auth | Excluir o próprio cadastro |
 
@@ -186,18 +185,48 @@ Para uma transferência, informe também o identificador do usuário de destino:
 }
 ```
 
-## Testes
+## Testes e cobertura de código
 
-Para executar os testes do MS-Users:
+Os microsserviços utilizam JUnit e Mockito para testes automatizados e JaCoCo para análise de cobertura de código.
+
+### MS-Users
+
+Para executar os testes e verificar a cobertura mínima de 80% de linhas:
 
 ```powershell
 cd ms-users
-.\mvnw.cmd verify
+.\mvnw.cmd clean verify
 ```
 
-Para executar os testes do MS-Transactions:
+O relatório HTML do JaCoCo é gerado em:
+
+`ms-users/target/site/jacoco/index.html`
+
+**Resultado da última execução verificada:**
+- Cobertura de linhas: **84,5%** (120 de 142 linhas).
+- Cobertura de instruções: 82%.
+- Cobertura de branches: 67%.
+- Meta mínima configurada: 80% de linhas.
+
+O Maven executa `jacoco:check` na fase `verify` e falha caso a cobertura considerada fique abaixo da meta.
+
+### MS-Transactions
+
+Para executar os testes:
 
 ```powershell
-cd ..\ms-transactions
-.\mvnw.cmd verify
+cd ms-transactions
+.\mvnw.cmd clean verify
 ```
+
+Quando o JaCoCo estiver configurado e habilitado na branch utilizada, o relatório HTML poderá ser consultado em:
+
+`ms-transactions/target/site/jacoco/index.html`
+
+A cobertura do MS-Transactions ainda precisa ser verificada após a integração das alterações do PR #26. Por isso, nenhum percentual é informado neste momento.
+
+### Observações
+
+A cobertura é calculada sobre as classes incluídas na configuração do JaCoCo de cada microsserviço. Controllers, DTOs, configurações e entidades JPA podem ser excluídos conforme as regras estabelecidas para o projeto.
+
+O comando `clean verify` executa os testes e as verificações configuradas no Maven. A existência de uma meta mínima depende da configuração do plugin em cada microsserviço.
