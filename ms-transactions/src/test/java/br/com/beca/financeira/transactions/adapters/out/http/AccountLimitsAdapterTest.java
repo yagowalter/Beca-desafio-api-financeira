@@ -4,6 +4,7 @@ package br.com.beca.financeira.transactions.adapters.out.http;
 import br.com.beca.financeira.transactions.application.port.service.AccountLimitsUnavailableException;
 import br.com.beca.financeira.transactions.application.port.service.AccountNotFoundException;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
@@ -140,6 +141,36 @@ class AccountLimitsAdapterTest {
 
         assertEquals(
                 "Não foi possível consultar saldo e limites da conta",
+                exception.getMessage()
+        );
+
+        server.verify();
+    }
+
+    @Test
+    void shouldThrowAccountNotFoundWhenAccountsServiceReturnsNotFound() {
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server =
+                MockRestServiceServer.bindTo(builder).build();
+
+        AccountLimitsAdapter adapter = new AccountLimitsAdapter(
+                builder,
+                "http://localhost:8080/accounts"
+        );
+
+        server.expect(requestTo(
+                        "http://localhost:8080/accounts?userId=7"
+                ))
+                .andExpect(method(GET))
+                .andRespond(withStatus(HttpStatus.NOT_FOUND));
+
+        AccountNotFoundException exception = assertThrows(
+                AccountNotFoundException.class,
+                () -> adapter.findByUserId(7L)
+        );
+
+        assertEquals(
+                "Conta não encontrada para o usuário 7",
                 exception.getMessage()
         );
 

@@ -22,7 +22,7 @@ API financeira composta por dois microsserviços Spring Boot:
 - PostgreSQL 17
 - Docker Compose
 - JUnit e Mockito
-- Swagger/OpenAPI no MS-Users
+- Swagger/OpenAPI nos dois microsserviços
 
 ## Pré-requisitos
 
@@ -46,11 +46,32 @@ MOCKAPI_ACCOUNTS_URL=https://seu-projeto.mockapi.io/accounts
 MS_USERS_BASE_URL=http://localhost:8080
 ```
 
-### Como encontrar a URL da MockAPI
+### Configurar a MockAPI
 
-Abra o `.env` na raiz do projeto e procure a variável `MOCKAPI_ACCOUNTS_URL`. O endereço configurado nessa linha é a URL usada pelo MS-Transactions para consultar contas na MockAPI.
+O MS-Transactions consulta o recurso `accounts` da MockAPI para obter o saldo, o limite diário e o limite por transação.
 
-Se precisar obter uma URL nova, acesse o projeto da MockAPI, abra o recurso de contas e copie a URL do endpoint. Use esse endereço como valor de `MOCKAPI_ACCOUNTS_URL` no `.env`.
+No projeto da MockAPI, abra o recurso `accounts` e copie a URL do endpoint. Configure essa URL na variável `MOCKAPI_ACCOUNTS_URL` do arquivo `.env`, na raiz do repositório:
+
+```dotenv
+MOCKAPI_ACCOUNTS_URL=https://seu-projeto.mockapi.io/accounts
+```
+
+Cada usuário que consultar saldo ou fizer uma retirada, transferência ou compra precisa ter um registro correspondente no recurso `accounts`. Primeiro, cadastre o usuário no MS-Users e anote o `id` retornado. Use esse mesmo valor no campo `userId` da conta na MockAPI. O cadastro no MS-Users não cria automaticamente uma conta na MockAPI. Depósitos não consultam saldo nem limites na MockAPI.
+
+Exemplo de registro:
+
+```json
+[
+  {
+    "userId": "52",
+    "balance": 1000.00,
+    "dailyLimit": 500.00,
+    "perTransactionLimit": 200.00
+  }
+]
+```
+
+O valor `"52"` é apenas ilustrativo: substitua-o pelo ID real retornado pelo MS-Users. Ao adicionar uma conta na MockAPI, preserve os registros existentes. Se não houver conta para o usuário autenticado, o MS-Transactions responde `404`; se a MockAPI estiver indisponível, responde `503`.
 
 No Docker Compose, o MS-Users é acessado pelo nome do serviço `ms-users`. Por isso, o Compose configura `MS_USERS_BASE_URL` como `http://ms-users:8080`.
 
@@ -94,12 +115,14 @@ Os dados dos bancos ficam em volumes Docker e são preservados ao executar `dock
 | PostgreSQL do MS-Users | `localhost:5433` |
 | PostgreSQL do MS-Transactions | `localhost:5434` |
 | Swagger do MS-Users | `http://localhost:8080/swagger-ui/index.html` |
+| Swagger do MS-Transactions | `http://localhost:8081/swagger-ui/index.html` |
 
 ## Documentação da API
 
-O Swagger do MS-Users permite consultar e executar as operações documentadas. Acesse:
+Os Swagger dos dois microsserviços permitem consultar e executar as operações documentadas:
 
-[http://localhost:8080/swagger-ui/index.html](http://localhost:8080/swagger-ui/index.html)
+- MS-Users: [http://localhost:8080/swagger-ui/index.html](http://localhost:8080/swagger-ui/index.html)
+- MS-Transactions: [http://localhost:8081/swagger-ui/index.html](http://localhost:8081/swagger-ui/index.html)
 
 As rotas protegidas usam HTTP Basic. No Swagger, clique em **Authorize** e informe o e-mail e a senha de um usuário cadastrado.
 
@@ -137,6 +160,7 @@ Todas as rotas exigem Basic Auth. O MS-Transactions valida as credenciais no MS-
 | `GET` | `/transactions/{id}` | Consultar uma transação própria |
 | `GET` | `/transactions/analysis` | Analisar despesas do usuário autenticado |
 | `GET` | `/transactions/export` | Exportar transações do usuário no período informado por `startDate` e `endDate` |
+| `GET` | `/transactions/account-limits` | Consultar saldo, limite diário e limite por transação do usuário autenticado, com dados da MockAPI |
 
 A análise aceita opcionalmente `startDate` e `endDate`, no formato `AAAA-MM-DD`. Se as datas forem omitidas, a análise considera o mês atual.
 
@@ -225,15 +249,13 @@ O relatório HTML do JaCoCo é gerado em:
 
 `ms-transactions/target/site/jacoco/index.html`
 
-**Última execução verificada:**
+**Última execução verificada (`.\mvnw.cmd clean verify`):**
 
-- Linhas cobertas: **459 de 477 (96,2%)**.
-- Instruções: **95%**.
+- Linhas cobertas: **464 de 489 (94,9%)**.
+- Instruções: **94%**.
 - Branches: **82%**.
-- Meta mínima: **80% de cobertura de linhas**.
+- Meta mínima: **80% de cobertura de linhas** — cumprida.
 
 ### Observações
 
-A cobertura é calculada sobre as classes incluídas na configuração do JaCoCo de cada microsserviço. Controllers, DTOs, configurações e entidades JPA podem ser excluídos conforme as regras estabelecidas para o projeto.
-
-O comando `clean verify` executa os testes e as verificações configuradas no Maven. A existência de uma meta mínima depende da configuração do plugin em cada microsserviço.
+Nos dois microsserviços, `jacoco:check` executa na fase `verify` e exige pelo menos 80% de cobertura de linhas nas classes incluídas no cálculo, respeitando as exclusões configuradas.

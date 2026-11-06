@@ -2,6 +2,7 @@ package br.com.beca.financeira.transactions.adapters.in.web;
 
 
 import br.com.beca.financeira.transactions.adapters.in.security.MsUsersAuthenticationProvider;
+import br.com.beca.financeira.transactions.application.port.in.AccountLimitsUseCase;
 import br.com.beca.financeira.transactions.application.port.in.ExpenseAnalysisUseCase;
 import br.com.beca.financeira.transactions.application.port.in.TransactionCsvExportUseCase;
 import br.com.beca.financeira.transactions.application.port.in.TransactionUseCase;
@@ -55,6 +56,9 @@ class TransactionSecurityTest {
 
     @MockitoBean
     private UserIdentityPort userIdentityPort;
+
+    @MockitoBean
+    private AccountLimitsUseCase accountLimitsUseCase;
 
     @Test
     void shouldRejectRequestWithoutCredentials() throws Exception {

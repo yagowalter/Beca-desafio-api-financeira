@@ -2,6 +2,7 @@ package br.com.beca.financeira.transactions.adapters.in.web;
 
 
 import br.com.beca.financeira.transactions.adapters.in.web.dto.CreateTransactionRequest;
+import br.com.beca.financeira.transactions.application.port.in.AccountLimitsUseCase;
 import br.com.beca.financeira.transactions.application.port.in.ExpenseAnalysisUseCase;
 import br.com.beca.financeira.transactions.application.port.in.TransactionCsvExportUseCase;
 import br.com.beca.financeira.transactions.application.port.in.TransactionUseCase;
@@ -29,6 +30,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.List;
 
+
 @Tag(name = "Transações", description = "Criação, consulta e análise de transações")
 @SecurityRequirement(name = "basicAuth")
 @RestController
@@ -38,15 +40,18 @@ public class TransactionController {
     private final TransactionUseCase transactionUseCase;
     private final ExpenseAnalysisUseCase expenseAnalysisUseCase;
     private final TransactionCsvExportUseCase transactionCsvExportUseCase;
+    private final AccountLimitsUseCase accountLimitsUseCase;
 
     public TransactionController(
             TransactionUseCase transactionUseCase,
             ExpenseAnalysisUseCase expenseAnalysisUseCase,
-            TransactionCsvExportUseCase transactionCsvExportUseCase
+            TransactionCsvExportUseCase transactionCsvExportUseCase,
+            AccountLimitsUseCase accountLimitsUseCase
     ) {
         this.transactionUseCase = transactionUseCase;
         this.expenseAnalysisUseCase = expenseAnalysisUseCase;
         this.transactionCsvExportUseCase = transactionCsvExportUseCase;
+        this.accountLimitsUseCase = accountLimitsUseCase;
     }
 
     @Operation(
@@ -180,5 +185,23 @@ public class TransactionController {
     ) {
         return ResponseEntity.ok(
                 transactionUseCase.findByIdAndUserId(id, principal.id()));
+    }
+
+    @Operation(
+            summary = "Consultar saldo e limites da conta",
+            description = "Retorna o saldo, limite diário e o limite por transação do usuário autenticado."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Saldo e limites retornados"),
+            @ApiResponse(responseCode = "404", description = "Conta não encontrada"),
+            @ApiResponse(responseCode = "503", description = "serviço de contas indisponível")
+    })
+    @GetMapping("/account-limits")
+    public ResponseEntity<AccountLimitsUseCase.AccountLimitsView> getAccountLimits(
+            @AuthenticationPrincipal UserPrincipal principal
+    ) {
+        return ResponseEntity.ok(
+                accountLimitsUseCase.findForUser(principal.id())
+        );
     }
 }
