@@ -7,6 +7,8 @@ import br.com.beca.financeira.transactions.application.port.in.ExpenseAnalysisUs
 import br.com.beca.financeira.transactions.application.port.in.TransactionCsvExportUseCase;
 import br.com.beca.financeira.transactions.application.port.in.TransactionUseCase;
 import br.com.beca.financeira.transactions.application.port.out.UserIdentityPort;
+import br.com.beca.financeira.transactions.application.port.service.AccountLimitsUnavailableException;
+import br.com.beca.financeira.transactions.application.port.service.AccountNotFoundException;
 import br.com.beca.financeira.transactions.config.SecurityConfig;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,7 +28,9 @@ import br.com.beca.financeira.transactions.domain.ExpenseAnalysis;
 
 import java.time.LocalDate;
 import java.math.BigDecimal;
+
 import br.com.beca.financeira.transactions.application.port.service.TransactionNotFoundException;
+
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.mockito.ArgumentMatchers.*;
 
@@ -77,7 +81,8 @@ class TransactionSecurityTest {
     void shouldAllowRequestWithValidCredentials() throws Exception {
         when(userIdentityPort.authenticate("ana@example.com", "SenhaTeste123!"))
                 .thenReturn(new UserIdentityPort.AuthenticatedUser(7L, "ana@example.com"));
-        when(transactionUseCase.findAllByUserId(7L)).thenReturn(List.of());
+        when(transactionUseCase.findAllByUserIdAndFilters(7L, null, null, null))
+                .thenReturn(List.of());
 
         mockMvc.perform(get("/transactions")
                         .header(
@@ -85,7 +90,7 @@ class TransactionSecurityTest {
                                 basicAuth("ana@example.com", "SenhaTeste123!")
                         ))
                 .andExpect(status().isOk());
-        verify(transactionUseCase).findAllByUserId(7L);
+        verify(transactionUseCase).findAllByUserIdAndFilters(7L, null, null, null);
     }
 
     private String basicAuth(String email, String password) {
@@ -231,12 +236,12 @@ class TransactionSecurityTest {
                         )
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                            {
-                                "description": "Compra teste",
-                                "amount": 25.00,
-                                "type": "PURCHASE"
-                            }
-                            """))
+                                {
+                                    "description": "Compra teste",
+                                    "amount": 25.00,
+                                    "type": "PURCHASE"
+                                }
+                                """))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.erros[0].campo").value("category"))
                 .andExpect(jsonPath("$.erros[0].message")
@@ -279,15 +284,15 @@ class TransactionSecurityTest {
         );
 
         String csv = "\uFEFFdata;tipo;categoria;descricao;valor (R$);status;motivo_rejeicao\r\n"
-                + "10/11/2026;\"PURCHASE\";\"Alimentação\";\"Compra; teste "
+                + "10-11-2026;\"PURCHASE\";\"Alimentação\";\"Compra; teste "
                 + "\"\"especial\"\"\";25,00;\"REJECTED\";\"Limite excedido\"\r\n";
 
         when(transactionCsvExportUseCase.exportCsv(7L, start, end))
                 .thenReturn(csv.getBytes(StandardCharsets.UTF_8));
 
         mockMvc.perform(get("/transactions/export")
-                        .param("startDate", "2026-11-01")
-                        .param("endDate", "2026-11-30")
+                        .param("startDate", "01-11-2026")
+                        .param("endDate", "30-11-2026")
                         .header(
                                 HttpHeaders.AUTHORIZATION,
                                 basicAuth("ana@example.com", "SenhaTeste123!")
@@ -299,11 +304,101 @@ class TransactionSecurityTest {
                         "attachment; filename=\"transacoes.csv\""
                 ))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("data;tipo;categoria")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("10/11/2026")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("10-11-2026")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Alimentação")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("25,00")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("\"Compra; teste \"\"especial\"\"\"")));
 
         verify(transactionCsvExportUseCase).exportCsv(7L, start, end);
+    }
+
+    @Test
+    void shouldReturnAccountLimitsForAuthenticatedUser() throws Exception {
+        when(userIdentityPort.authenticate("ana@example.com", "SenhaTeste123!"))
+                .thenReturn(new UserIdentityPort.AuthenticatedUser(7L, "ana@example.com"));
+        when(accountLimitsUseCase.findForUser(7L))
+                .thenReturn(new AccountLimitsUseCase.AccountLimitsView(
+                        new BigDecimal("250.00"),
+                        new BigDecimal("100.00"),
+                        new BigDecimal("30.00")
+                ));
+
+        mockMvc.perform(get("/transactions/account-limits")
+                        .header(
+                                HttpHeaders.AUTHORIZATION,
+                                basicAuth("ana@example.com", "SenhaTeste123!")
+                        ))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.balance").value(250.0))
+                .andExpect(jsonPath("$.dailyLimit").value(100.0))
+                .andExpect(jsonPath("$.perTransactionLimit").value(30.0));
+
+        verify(accountLimitsUseCase).findForUser(7L);
+    }
+
+    @Test
+    void shouldReturnNotFoundWhenAuthenticatedUsersAccountDoesNotExist()
+            throws Exception {
+        when(userIdentityPort.authenticate("ana@example.com", "SenhaTeste123!"))
+                .thenReturn(new UserIdentityPort.AuthenticatedUser(7L, "ana@example.com"));
+        when(accountLimitsUseCase.findForUser(7L))
+                .thenThrow(new AccountNotFoundException("Conta não encontrada"));
+
+        mockMvc.perform(get("/transactions/account-limits")
+                        .header(
+                                HttpHeaders.AUTHORIZATION,
+                                basicAuth("ana@example.com", "SenhaTeste123!")
+                        ))
+                .andExpect(status().isNotFound());
+
+        verify(accountLimitsUseCase).findForUser(7L);
+    }
+
+    @Test
+    void shouldReturnServiceUnavailableWhenAccountLimitsServiceIsUnavailable()
+            throws Exception {
+        when(userIdentityPort.authenticate("ana@example.com", "SenhaTeste123!"))
+                .thenReturn(new UserIdentityPort.AuthenticatedUser(7L, "ana@example.com"));
+        when(accountLimitsUseCase.findForUser(7L))
+                .thenThrow(new AccountLimitsUnavailableException("Serviço indisponível"));
+
+        mockMvc.perform(get("/transactions/account-limits")
+                        .header(
+                                HttpHeaders.AUTHORIZATION,
+                                basicAuth("ana@example.com", "SenhaTeste123!")
+                        ))
+                .andExpect(status().isServiceUnavailable());
+
+        verify(accountLimitsUseCase).findForUser(7L);
+    }
+
+    @Test
+    void shouldFilterAuthenticatedUsersTransactionsByPeriodAndType()
+            throws Exception {
+        when(userIdentityPort.authenticate("ana@example.com", "SenhaTeste123!"))
+                .thenReturn(new UserIdentityPort.AuthenticatedUser(7L, "ana@example.com"));
+
+        LocalDate startDate = LocalDate.of(2026, 11, 1);
+        LocalDate endDate = LocalDate.of(2026, 11, 30);
+
+        when(transactionUseCase.findAllByUserIdAndFilters(
+                7L, startDate, endDate, TransactionType.PURCHASE
+        )).thenReturn(List.of());
+
+        mockMvc.perform(get("/transactions")
+                        .param("startDate", "01-11-2026")
+                        .param("endDate", "30-11-2026")
+                        .param("type", "PURCHASE")
+                        .header(
+                                HttpHeaders.AUTHORIZATION,
+                                basicAuth("ana@example.com", "SenhaTeste123!")
+                        ))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$.length()").value(0));
+
+        verify(transactionUseCase).findAllByUserIdAndFilters(
+                7L, startDate, endDate, TransactionType.PURCHASE
+        );
     }
 }

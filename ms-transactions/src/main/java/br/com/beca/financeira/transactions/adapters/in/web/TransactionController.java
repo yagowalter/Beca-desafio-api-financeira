@@ -8,6 +8,7 @@ import br.com.beca.financeira.transactions.application.port.in.TransactionCsvExp
 import br.com.beca.financeira.transactions.application.port.in.TransactionUseCase;
 import br.com.beca.financeira.transactions.domain.ExpenseAnalysis;
 import br.com.beca.financeira.transactions.domain.Transaction;
+import br.com.beca.financeira.transactions.domain.TransactionType;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -82,14 +83,36 @@ public class TransactionController {
 
     @Operation(
             summary = "Listar transações do usuário autenticado",
-            description = "Retorna somente as transações pertencentes ao usuário autenticado."
+            description = "Retorna as transações do usuário autenticado. "
+                    + "Os filtros startDate e endDate devem ser informados juntos. "
+                    + "O filtro type pode ser usado sozinho ou combinado com o período."
     )
-    @ApiResponse(responseCode = "200", description = "Lista de transações retornada")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Lista de transações retornada"),
+            @ApiResponse(responseCode = "400", description = "Filtros ou período inválidos")
+    })
     @GetMapping
     public ResponseEntity<List<Transaction>> findAll(
-            @AuthenticationPrincipal UserPrincipal principal
+            @AuthenticationPrincipal UserPrincipal principal,
+            @Parameter(description = "Data inicial do período, no formato DD-MM-AAAA",
+                    example = "01-11-2026")
+            @RequestParam(required = false)
+            @DateTimeFormat(pattern = "dd-MM-yyyy") LocalDate startDate,
+            @Parameter(description = "Data final do período, no formato DD-MM-AAAA",
+                    example = "30-11-2026")
+            @RequestParam(required = false)
+            @DateTimeFormat(pattern = "dd-MM-yyyy") LocalDate endDate,
+            @Parameter(description = "Tipo da transação", example = "PURCHASE")
+            @RequestParam(required = false) TransactionType type
     ) {
-        return ResponseEntity.ok(transactionUseCase.findAllByUserId(principal.id()));
+        return ResponseEntity.ok(
+                transactionUseCase.findAllByUserIdAndFilters(
+                        principal.id(),
+                        startDate,
+                        endDate,
+                        type
+                )
+        );
     }
 
     @Operation(
@@ -103,14 +126,14 @@ public class TransactionController {
     @GetMapping("/analysis")
     public ResponseEntity<ExpenseAnalysis> analyzeExpenses(
             @AuthenticationPrincipal UserPrincipal principal,
-            @Parameter(description = "Data inicial do período, no formato AAAA-MM-DD",
-                    example = "2026-11-01")
+            @Parameter(description = "Data inicial do período, no formato DD-MM-AAAA",
+                    example = "01-11-2026")
             @RequestParam(required = false)
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
-            @Parameter(description = "Data final do período, no formato AAAA-MM-DD",
-                    example = "2026-11-30")
+            @DateTimeFormat(pattern = "dd-MM-yyyy") LocalDate startDate,
+            @Parameter(description = "Data final do período, no formato DD-MM-AAAA",
+                    example = "30-11-2026")
             @RequestParam(required = false)
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate
+            @DateTimeFormat(pattern = "dd-MM-yyyy") LocalDate endDate
     ) {
         return ResponseEntity.ok(
                 expenseAnalysisUseCase.analyzeExpenses(
@@ -123,7 +146,7 @@ public class TransactionController {
 
     @Operation(
             summary = "Exportar transações em CSV",
-            description = "Baixa as transações do usuário autenticado no período informado. As datas devem estar no formato AAAA-MM-DD."
+            description = "Baixa as transações do usuário autenticado no período informado. As datas devem estar no formato DD-MM-AAAA."
     )
     @ApiResponses({
             @ApiResponse(
@@ -140,13 +163,13 @@ public class TransactionController {
     @GetMapping(value = "/export", produces = "text/csv")
     public ResponseEntity<byte[]> exportCsv(
             @AuthenticationPrincipal UserPrincipal principal,
-            @Parameter(description = "Data inicial do período, no formato AAAA-MM-DD",
-                    example = "2026-11-01")
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            @Parameter(description = "Data inicial do período, no formato DD-MM-AAAA",
+                    example = "01-11-2026")
+            @RequestParam @DateTimeFormat(pattern = "dd-MM-yyyy")
             LocalDate startDate,
-            @Parameter(description = "Data final do período, no formato AAAA-MM-DD",
-                    example = "2026-11-30")
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            @Parameter(description = "Data final do período, no formato DD-MM-AAAA",
+                    example = "30-11-2026")
+            @RequestParam @DateTimeFormat(pattern = "dd-MM-yyyy")
             LocalDate endDate
     ) {
         byte[] csv = transactionCsvExportUseCase.exportCsv(

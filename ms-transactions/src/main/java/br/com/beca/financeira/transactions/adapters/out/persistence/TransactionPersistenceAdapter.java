@@ -3,6 +3,7 @@ package br.com.beca.financeira.transactions.adapters.out.persistence;
 
 import br.com.beca.financeira.transactions.application.port.out.TransactionRepositoryPort;
 import br.com.beca.financeira.transactions.domain.Transaction;
+import br.com.beca.financeira.transactions.domain.TransactionType;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -17,6 +18,36 @@ public class TransactionPersistenceAdapter implements TransactionRepositoryPort 
 
     public TransactionPersistenceAdapter(TransactionJpaRepository transactionJpaRepository) {
         this.transactionJpaRepository = transactionJpaRepository;
+    }
+
+    @Override
+    public List<Transaction> findAllByUserIdAndType(
+            Long userId,
+            TransactionType type
+    ) {
+        return transactionJpaRepository.findAllByUserIdAndType(userId, type)
+                .stream()
+                .map(TransactionEntity::toDomain)
+                .toList();
+    }
+
+    @Override
+    public List<Transaction> findAllByUserIdAndTypeAndPeriod(
+            Long userId,
+            TransactionType type,
+            LocalDateTime startInclusive,
+            LocalDateTime endExclusive
+    ) {
+        return transactionJpaRepository
+                .findAllByUserIdAndTypeAndOccurredAtGreaterThanEqualAndOccurredAtLessThan(
+                        userId,
+                        type,
+                        startInclusive,
+                        endExclusive
+                )
+                .stream()
+                .map(TransactionEntity::toDomain)
+                .toList();
     }
 
     @Override

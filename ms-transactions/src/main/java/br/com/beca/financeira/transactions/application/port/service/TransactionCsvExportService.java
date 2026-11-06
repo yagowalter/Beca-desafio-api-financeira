@@ -3,6 +3,7 @@ package br.com.beca.financeira.transactions.application.port.service;
 import br.com.beca.financeira.transactions.application.port.in.TransactionCsvExportUseCase;
 import br.com.beca.financeira.transactions.application.port.in.TransactionUseCase;
 import br.com.beca.financeira.transactions.domain.Transaction;
+import br.com.beca.financeira.transactions.domain.TransactionDomainException;
 import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
@@ -16,7 +17,7 @@ import java.util.Locale;
 public class TransactionCsvExportService implements TransactionCsvExportUseCase {
 
     private static final DateTimeFormatter DATE_FORMAT =
-            DateTimeFormatter.ofPattern("dd/MM/yyyy");
+            DateTimeFormatter.ofPattern("dd-MM-yyyy");
 
     private final TransactionUseCase transactionUseCase;
 
@@ -26,6 +27,14 @@ public class TransactionCsvExportService implements TransactionCsvExportUseCase 
 
     @Override
     public byte[] exportCsv(Long userId, LocalDate startDate, LocalDate endDate) {
+
+        if (endDate.isBefore(startDate)
+                || endDate.isAfter(startDate.plusMonths(12))) {
+            throw new TransactionDomainException(
+                    "O período de exportação deve ser de até 12 meses"
+            );
+        }
+
         List<Transaction> transactions =
                 transactionUseCase.findAllByUserIdAndPeriod(
                         userId, startDate, endDate
@@ -39,7 +48,8 @@ public class TransactionCsvExportService implements TransactionCsvExportUseCase 
         amountFormat.setMinimumFractionDigits(2);
         amountFormat.setMaximumFractionDigits(2);
 
-        for (Transaction transaction : transactions) {
+        for (
+                Transaction transaction : transactions) {
             csv.append(csvField(transaction.getOccurredAt()
                             .toLocalDate().format(DATE_FORMAT))).append(';')
                     .append(csvField(transaction.getType().name())).append(";")
@@ -52,7 +62,9 @@ public class TransactionCsvExportService implements TransactionCsvExportUseCase 
                     .append("\r\n");
         }
 
-        return csv.toString().getBytes(StandardCharsets.UTF_8);
+        return csv.toString().
+
+                getBytes(StandardCharsets.UTF_8);
     }
 
     private String csvField(String value) {

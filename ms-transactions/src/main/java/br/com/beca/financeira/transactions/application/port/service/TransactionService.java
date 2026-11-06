@@ -171,4 +171,58 @@ public class TransactionService implements TransactionUseCase {
         );
     }
 
+    @Override
+    public List<Transaction> findAllByUserIdAndFilters(
+            Long userId,
+            LocalDate startDate,
+            LocalDate endDate,
+            TransactionType type
+    ) {
+        if (userId == null || userId <= 0) {
+            throw new TransactionDomainException("Usuário inválido");
+        }
+
+        boolean onlyOneDateProvided =
+                (startDate == null && endDate != null)
+                        || (startDate != null && endDate == null);
+
+        if (onlyOneDateProvided) {
+            throw new TransactionDomainException(
+                    "Informe as duas datas para filtrar por período"
+            );
+        }
+
+        if (startDate != null && endDate.isBefore(startDate)) {
+            throw new TransactionDomainException(
+                    "A data final não pode ser anterior à data inicial"
+            );
+        }
+
+        if (startDate == null) {
+            if (type == null) {
+                return transactionRepositoryPort.findAllByUserId(userId);
+            }
+
+            return transactionRepositoryPort.findAllByUserIdAndType(userId, type);
+        }
+
+        LocalDateTime startInclusive = startDate.atStartOfDay();
+        LocalDateTime endExclusive = endDate.plusDays(1).atStartOfDay();
+
+        if (type == null) {
+            return transactionRepositoryPort.findAllByUserIdAndPeriod(
+                    userId,
+                    startInclusive,
+                    endExclusive
+            );
+        }
+
+        return transactionRepositoryPort.findAllByUserIdAndTypeAndPeriod(
+                userId,
+                type,
+                startInclusive,
+                endExclusive
+        );
+    }
+
 }

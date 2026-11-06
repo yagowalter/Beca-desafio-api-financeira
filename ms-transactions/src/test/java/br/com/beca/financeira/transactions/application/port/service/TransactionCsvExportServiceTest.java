@@ -3,6 +3,7 @@ package br.com.beca.financeira.transactions.application.port.service;
 
 import br.com.beca.financeira.transactions.application.port.in.TransactionUseCase;
 import br.com.beca.financeira.transactions.domain.Transaction;
+import br.com.beca.financeira.transactions.domain.TransactionDomainException;
 import br.com.beca.financeira.transactions.domain.TransactionType;
 import org.junit.jupiter.api.Test;
 
@@ -57,6 +58,8 @@ class TransactionCsvExportServiceTest {
                 "\uFEFFdata;tipo;categoria;descricao;valor (R$);status;motivo_rejeicao\r\n"
         ));
 
+        assertTrue(csv.matches("(?s).*\"\\d{2}-\\d{2}-\\d{4}\";.*"));
+
         assertTrue(csv.contains(
                 ";\"PURCHASE\";\"Alimentação\";\"Compra no mercado\";25,50;\"APPROVED\";"
         ));
@@ -105,5 +108,33 @@ class TransactionCsvExportServiceTest {
                 "\uFEFFdata;tipo;categoria;descricao;valor (R$);status;motivo_rejeicao\r\n",
                 csv
         );
+    }
+
+    @Test
+    void shouldAllowExportPeriodOfExactly12Months() {
+        LocalDate endDate = startDate.plusMonths(12);
+
+        when(transactionUseCase.findAllByUserIdAndPeriod(
+                7L, startDate, endDate
+        )).thenReturn(List.of());
+
+        byte[] csv = service.exportCsv(7L, startDate, endDate);
+
+        assertNotNull(csv);
+        verify(transactionUseCase).findAllByUserIdAndPeriod(
+                7L, startDate, endDate
+        );
+    }
+
+    @Test
+    void shouldRejectExportPeriodLongerThan12Months() {
+        LocalDate endDate = startDate.plusMonths(12).plusDays(1);
+
+        assertThrows(
+                TransactionDomainException.class,
+                () -> service.exportCsv(7L, startDate, endDate)
+        );
+
+        verifyNoInteractions(transactionUseCase);
     }
 }

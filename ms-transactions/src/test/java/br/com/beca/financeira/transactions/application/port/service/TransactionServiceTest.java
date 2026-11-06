@@ -5,6 +5,7 @@ import br.com.beca.financeira.transactions.application.port.out.AccountLimitsPor
 import br.com.beca.financeira.transactions.application.port.out.ExchangeRatePort;
 import br.com.beca.financeira.transactions.application.port.out.TransactionRepositoryPort;
 import br.com.beca.financeira.transactions.domain.Transaction;
+import br.com.beca.financeira.transactions.domain.TransactionDomainException;
 import br.com.beca.financeira.transactions.domain.TransactionStatus;
 import br.com.beca.financeira.transactions.domain.TransactionType;
 import org.junit.jupiter.api.Test;
@@ -473,6 +474,101 @@ class TransactionServiceTest {
         assertThrows(
                 IllegalArgumentException.class,
                 () -> service.findAllByUserIdAndPeriod(7L, end, start)
+        );
+
+        verifyNoInteractions(repository);
+    }
+
+    @Test
+    void shouldFindTransactionsForUserWithoutFilters() {
+        TransactionRepositoryPort repository = mock(TransactionRepositoryPort.class);
+        AccountLimitsPort accountLimits = mock(AccountLimitsPort.class);
+        ExchangeRatePort exchangeRates = mock(ExchangeRatePort.class);
+        TransactionService service = new TransactionService(repository, accountLimits, exchangeRates);
+
+        when(repository.findAllByUserId(7L)).thenReturn(List.of());
+
+        assertTrue(service.findAllByUserIdAndFilters(7L, null, null, null).isEmpty());
+
+        verify(repository).findAllByUserId(7L);
+    }
+
+    @Test
+    void shouldFindTransactionsByTypeWithoutPeriod() {
+        TransactionRepositoryPort repository = mock(TransactionRepositoryPort.class);
+        AccountLimitsPort accountLimits = mock(AccountLimitsPort.class);
+        ExchangeRatePort exchangeRates = mock(ExchangeRatePort.class);
+        TransactionService service =
+                new TransactionService(repository, accountLimits, exchangeRates);
+
+        when(repository.findAllByUserIdAndType(
+                7L, TransactionType.PURCHASE
+        )).thenReturn(List.of());
+
+        assertTrue(service.findAllByUserIdAndFilters(
+                7L, null, null, TransactionType.PURCHASE
+        ).isEmpty());
+
+        verify(repository).findAllByUserIdAndType(
+                7L, TransactionType.PURCHASE
+        );
+    }
+
+    @Test
+    void shouldFindTransactionsByTypeAndPeriod() {
+        TransactionRepositoryPort repository = mock(TransactionRepositoryPort.class);
+        AccountLimitsPort accountLimits = mock(AccountLimitsPort.class);
+        ExchangeRatePort exchangeRates = mock(ExchangeRatePort.class);
+        TransactionService service =
+                new TransactionService(repository, accountLimits, exchangeRates);
+
+        LocalDate start = LocalDate.of(2026, 11, 1);
+        LocalDate end = LocalDate.of(2026, 11, 30);
+
+        when(repository.findAllByUserIdAndTypeAndPeriod(
+                7L,
+                TransactionType.PURCHASE,
+                start.atStartOfDay(),
+                end.plusDays(1).atStartOfDay()
+        )).thenReturn(List.of());
+
+        assertTrue(service.findAllByUserIdAndFilters(
+                7L, start, end, TransactionType.PURCHASE
+        ).isEmpty());
+
+        verify(repository).findAllByUserIdAndTypeAndPeriod(
+                7L,
+                TransactionType.PURCHASE,
+                start.atStartOfDay(),
+                end.plusDays(1).atStartOfDay()
+        );
+    }
+
+    @Test
+    void shouldRejectInvalidFiltersBeforeRepositoryCall() {
+        TransactionRepositoryPort repository = mock(TransactionRepositoryPort.class);
+        AccountLimitsPort accountLimits = mock(AccountLimitsPort.class);
+        ExchangeRatePort exchangeRates = mock(ExchangeRatePort.class);
+        TransactionService service = new TransactionService(repository, accountLimits, exchangeRates);
+
+        LocalDate start = LocalDate.of(2026, 11, 10);
+        LocalDate end = LocalDate.of(2026, 11, 20);
+
+        assertThrows(
+                TransactionDomainException.class,
+                () -> service.findAllByUserIdAndFilters(0L, null, null, null)
+        );
+        assertThrows(
+                TransactionDomainException.class,
+                () -> service.findAllByUserIdAndFilters(7L, start, null, null)
+        );
+        assertThrows(
+                TransactionDomainException.class,
+                () -> service.findAllByUserIdAndFilters(7L, null, end, null)
+        );
+        assertThrows(
+                TransactionDomainException.class,
+                () -> service.findAllByUserIdAndFilters(7L, end, start, null)
         );
 
         verifyNoInteractions(repository);
