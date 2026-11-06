@@ -1,10 +1,7 @@
 package br.com.beca.financeira.transactions.adapters.in.web.dto;
 
 import br.com.beca.financeira.transactions.domain.TransactionType;
-import jakarta.validation.constraints.DecimalMin;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.*;
 
 import java.math.BigDecimal;
 
@@ -16,6 +13,8 @@ public record UpdateTransactionRequest(
 
         @NotNull
         @DecimalMin("0.01")
+        @Digits(integer = 17, fraction = 2 ,
+        message = "Valor deve ter no máximo 17 dígitos inteiros e 2 casas decimais")
         BigDecimal amount,
 
         @NotNull

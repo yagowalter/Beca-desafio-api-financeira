@@ -17,6 +17,7 @@ import org.springframework.web.client.ResourceAccessException;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -421,4 +422,60 @@ class TransactionServiceTest {
         assertEquals(TransactionStatus.APPROVED, savedTransaction.getValue().getStatus());
         assertNull(savedTransaction.getValue().getRejectionReason());
     }
+
+    @Test
+    void shouldFindTransactionsByUserAndInclusiveDatePeriod() {
+        TransactionRepositoryPort repository = mock(TransactionRepositoryPort.class);
+        AccountLimitsPort accountLimits = mock(AccountLimitsPort.class);
+        ExchangeRatePort exchangeRates = mock(ExchangeRatePort.class);
+        TransactionService service = new TransactionService(repository, accountLimits, exchangeRates);
+
+        LocalDate start = LocalDate.of(2026, 11, 1);
+        LocalDate end = LocalDate.of(2026, 11, 30);
+
+        when(repository.findAllByUserIdAndPeriod(
+                7L,
+                start.atStartOfDay(),
+                end.plusDays(1).atStartOfDay()
+        )).thenReturn(List.of());
+
+        assertTrue(service.findAllByUserIdAndPeriod(7L, start, end).isEmpty());
+
+        verify(repository).findAllByUserIdAndPeriod(
+                7L,
+                start.atStartOfDay(),
+                end.plusDays(1).atStartOfDay()
+        );
+    }
+
+    @Test
+    void shouldRejectInvalidUserOrPeriodBeforeRepositoryCall() {
+        TransactionRepositoryPort repository = mock(TransactionRepositoryPort.class);
+        AccountLimitsPort accountLimits = mock(AccountLimitsPort.class);
+        ExchangeRatePort exchangeRates = mock(ExchangeRatePort.class);
+        TransactionService service = new TransactionService(repository, accountLimits, exchangeRates);
+
+        LocalDate start = LocalDate.of(2026, 11, 10);
+        LocalDate end = LocalDate.of(2026, 11, 20);
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> service.findAllByUserIdAndPeriod(0L, start, end)
+        );
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> service.findAllByUserIdAndPeriod(7L, null, end)
+        );
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> service.findAllByUserIdAndPeriod(7L, start, null)
+        );
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> service.findAllByUserIdAndPeriod(7L, end, start)
+        );
+
+        verifyNoInteractions(repository);
+    }
+
 }

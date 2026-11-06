@@ -31,4 +31,10 @@ public interface TransactionRepositoryPort {
             LocalDateTime endExclusive
     );
 
+    List<Transaction> findAllByUserIdAndPeriod(
+            Long userId,
+            LocalDateTime startInclusive,
+            LocalDateTime endExclusive
+    );
+
 }

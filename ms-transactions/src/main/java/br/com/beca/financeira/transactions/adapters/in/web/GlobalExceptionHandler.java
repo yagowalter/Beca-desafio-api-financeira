@@ -4,6 +4,7 @@ package br.com.beca.financeira.transactions.adapters.in.web;
 import br.com.beca.financeira.transactions.application.port.service.AccountLimitsUnavailableException;
 import br.com.beca.financeira.transactions.application.port.service.AccountNotFoundException;
 import br.com.beca.financeira.transactions.application.port.service.TransactionNotFoundException;
+import br.com.beca.financeira.transactions.domain.TransactionDomainException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -87,12 +88,21 @@ public class GlobalExceptionHandler {
         );
     }
 
-    @ExceptionHandler(IllegalArgumentException.class)
+    @ExceptionHandler(TransactionDomainException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public ProblemDetail handleDomainValidation(IllegalArgumentException exception) {
+    public ProblemDetail handleDomainValidation(TransactionDomainException exception) {
         return ProblemDetail.forStatusAndDetail(
                 HttpStatus.BAD_REQUEST,
                 exception.getMessage()
+        );
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ProblemDetail handleIllegalArgument(IllegalArgumentException exception) {
+        return ProblemDetail.forStatusAndDetail(
+                HttpStatus.BAD_REQUEST,
+                "Requisição inválida"
         );
     }
 }

@@ -4,6 +4,7 @@ import br.com.beca.financeira.transactions.domain.Transaction;
 import br.com.beca.financeira.transactions.domain.TransactionType;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 
 public interface TransactionUseCase {
@@ -18,6 +19,12 @@ public interface TransactionUseCase {
     );
 
     List<Transaction> findAllByUserId(Long userId);
+
+    List<Transaction> findAllByUserIdAndPeriod(
+            Long userId,
+            LocalDate startDate,
+            LocalDate endDate
+    );
 
     Transaction findByIdAndUserId(Long id, Long userId);
 }

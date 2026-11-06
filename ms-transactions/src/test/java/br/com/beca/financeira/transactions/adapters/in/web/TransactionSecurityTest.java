@@ -3,6 +3,7 @@ package br.com.beca.financeira.transactions.adapters.in.web;
 
 import br.com.beca.financeira.transactions.adapters.in.security.MsUsersAuthenticationProvider;
 import br.com.beca.financeira.transactions.application.port.in.ExpenseAnalysisUseCase;
+import br.com.beca.financeira.transactions.application.port.in.TransactionCsvExportUseCase;
 import br.com.beca.financeira.transactions.application.port.in.TransactionUseCase;
 import br.com.beca.financeira.transactions.application.port.out.UserIdentityPort;
 import br.com.beca.financeira.transactions.config.SecurityConfig;
@@ -34,8 +35,7 @@ import java.util.List;
 
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(TransactionController.class)
 @Import({SecurityConfig.class, MsUsersAuthenticationProvider.class})
@@ -49,6 +49,9 @@ class TransactionSecurityTest {
 
     @MockitoBean
     private ExpenseAnalysisUseCase expenseAnalysisUseCase;
+
+    @MockitoBean
+    private TransactionCsvExportUseCase transactionCsvExportUseCase;
 
     @MockitoBean
     private UserIdentityPort userIdentityPort;
@@ -210,5 +213,93 @@ class TransactionSecurityTest {
                                 basicAuth("ana@example.com", "SenhaTeste123!")
                         ))
                 .andExpect(status().isServiceUnavailable());
+    }
+
+    @Test
+    void shouldReturnBadRequestWhenPurchaseHasNoCategory() throws Exception {
+        when(userIdentityPort.authenticate("ana@example.com", "SenhaTeste123!"))
+                .thenReturn(new UserIdentityPort.AuthenticatedUser(7L, "ana@example.com"));
+
+        mockMvc.perform(post("/transactions")
+                        .header(
+                                HttpHeaders.AUTHORIZATION,
+                                basicAuth("ana@example.com", "SenhaTeste123!")
+                        )
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                            {
+                                "description": "Compra teste",
+                                "amount": 25.00,
+                                "type": "PURCHASE"
+                            }
+                            """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.erros[0].campo").value("category"))
+                .andExpect(jsonPath("$.erros[0].message")
+                        .value("Categoria é obrigatória para compras"));
+
+        verify(transactionUseCase, never()).create(
+                anyLong(),
+                anyString(),
+                any(),
+                any(),
+                any(),
+                any()
+        );
+    }
+
+    @Test
+    void shouldExportAuthenticatedUsersTransactionsAsCsv() throws Exception {
+        when(userIdentityPort.authenticate("ana@example.com", "SenhaTeste123!"))
+                .thenReturn(new UserIdentityPort.AuthenticatedUser(7L, "ana@example.com"));
+
+        LocalDate start = LocalDate.of(2026, 11, 1);
+        LocalDate end = LocalDate.of(2026, 11, 30);
+
+        Transaction transaction = new Transaction(
+                1L,
+                7L,
+                "Compra; teste \"especial\"",
+                new BigDecimal("25.00"),
+                TransactionType.PURCHASE,
+                LocalDate.of(2026, 11, 10).atTime(10, 15),
+                "Alimentação",
+                null,
+                br.com.beca.financeira.transactions.domain.TransactionStatus.REJECTED,
+                "Limite excedido",
+                null,
+                null,
+                null,
+                null,
+                false
+        );
+
+        String csv = "\uFEFFdata;tipo;categoria;descricao;valor (R$);status;motivo_rejeicao\r\n"
+                + "10/11/2026;\"PURCHASE\";\"Alimentação\";\"Compra; teste "
+                + "\"\"especial\"\"\";25,00;\"REJECTED\";\"Limite excedido\"\r\n";
+
+        when(transactionCsvExportUseCase.exportCsv(7L, start, end))
+                .thenReturn(csv.getBytes(StandardCharsets.UTF_8));
+
+        mockMvc.perform(get("/transactions/export")
+                        .param("startDate", "2026-11-01")
+                        .param("endDate", "2026-11-30")
+                        .header(
+                                HttpHeaders.AUTHORIZATION,
+                                basicAuth("ana@example.com", "SenhaTeste123!")
+                        ))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith("text/csv"))
+                .andExpect(header().string(
+                        HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"transacoes.csv\""
+                ))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("data;tipo;categoria")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("10/11/2026")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Alimentação")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("25,00")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("\"Compra; teste \"\"especial\"\"\"")));
+
+        verify(transactionCsvExportUseCase).exportCsv(7L, start, end);
     }
 }

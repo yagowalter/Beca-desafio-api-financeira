@@ -4,6 +4,7 @@ import br.com.beca.financeira.transactions.application.port.in.ExpenseAnalysisUs
 import br.com.beca.financeira.transactions.application.port.out.TransactionRepositoryPort;
 import br.com.beca.financeira.transactions.domain.ExpenseAnalysis;
 import br.com.beca.financeira.transactions.domain.Transaction;
+import br.com.beca.financeira.transactions.domain.TransactionDomainException;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -48,7 +49,7 @@ public class ExpenseAnalysisService implements ExpenseAnalysisUseCase {
             LocalDate endDate
     ) {
         if (userId == null || userId <= 0) {
-            throw new IllegalArgumentException("Usuário inválido");
+            throw new TransactionDomainException("Usuário inválido");
         }
 
         if (startDate == null && endDate == null) {
@@ -57,13 +58,13 @@ public class ExpenseAnalysisService implements ExpenseAnalysisUseCase {
         }
 
         if (startDate == null || endDate == null) {
-            throw new IllegalArgumentException(
+            throw new TransactionDomainException(
                     "Informe a data inicial e a data final"
             );
         }
 
         if (endDate.isBefore(startDate)) {
-            throw new IllegalArgumentException(
+            throw new TransactionDomainException(
                     "A data final não pode ser anterior à data inicial"
             );
         }
