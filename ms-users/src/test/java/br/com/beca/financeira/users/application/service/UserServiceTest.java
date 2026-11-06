@@ -8,7 +8,6 @@ import org.mockito.ArgumentCaptor;
 import java.util.Optional;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verify;
-import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -45,22 +44,6 @@ class UserServiceTest {
 
         verify(hasher, never()).hash(anyString());
         verify(repository, never()).save(any());
-    }
-
-    @Test
-    void shouldReturnAllUsersFromRepository() {
-        UserRepositoryPort repository = mock(UserRepositoryPort.class);
-        PasswordHasherPort hasher = mock(PasswordHasherPort.class);
-        UserService service = new UserService(repository, hasher);
-
-        List<User> users = List.of(
-                new User(1L, "Ana", "ana@example.com", "hash")
-        );
-        when(repository.findAll()).thenReturn(users);
-
-        assertSame(users, service.findAll());
-        verify(repository).findAll();
-        verifyNoInteractions(hasher);
     }
 
     @Test

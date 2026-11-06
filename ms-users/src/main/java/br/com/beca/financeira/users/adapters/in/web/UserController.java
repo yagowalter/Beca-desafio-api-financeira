@@ -26,7 +26,7 @@ import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.security.Principal;
 
-@Tag(name = "Usuários" , description = "Cadastro, consulta, atualização e remoção de usuários")
+@Tag(name = "Usuários", description = "Cadastro, consulta, atualização e remoção de usuários")
 @RestController
 @RequestMapping("/users")
 public class UserController {
@@ -43,9 +43,9 @@ public class UserController {
     }
 
     private void ensureOwnAccount(Long id, Principal principal) {
-        User targetUser = userUseCase.findById(id);
+        User authenticatedUser = userUseCase.findByEmail(principal.getName());
 
-        if (!targetUser.getEmail().equalsIgnoreCase(principal.getName())) {
+        if (!authenticatedUser.getId().equals(id)) {
             throw new AccessDeniedException("Acesso negado a este usuário");
         }
     }
@@ -65,20 +65,20 @@ public class UserController {
                     mediaType = "application/problem+json",
                     schema = @Schema(implementation = ProblemDetail.class),
                     examples = @ExampleObject(value = """
-                        {
-                          "type": "about:blank",
-                          "title": "Bad Request",
-                          "status": 400,
-                          "detail": "Um ou mais campos estão inválidos",
-                          "instance": "/users",
-                          "erros": [
                             {
-                              "campo": "password",
-                              "mensagem": "Senha deve ter no mínimo 8 caracteres"
+                              "type": "about:blank",
+                              "title": "Bad Request",
+                              "status": 400,
+                              "detail": "Um ou mais campos estão inválidos",
+                              "instance": "/users",
+                              "erros": [
+                                {
+                                  "campo": "password",
+                                  "mensagem": "Senha deve ter no mínimo 8 caracteres"
+                                }
+                              ]
                             }
-                          ]
-                        }
-                        """)
+                            """)
             )
     )
     @ApiResponse(
@@ -88,14 +88,14 @@ public class UserController {
                     mediaType = "application/problem+json",
                     schema = @Schema(implementation = ProblemDetail.class),
                     examples = @ExampleObject(value = """
-                        {
-                          "type": "about:blank",
-                          "title": "Conflict",
-                          "status": 409,
-                          "detail": "E-mail já cadastrado",
-                          "instance": "/users"
-                        }
-                        """)
+                            {
+                              "type": "about:blank",
+                              "title": "Conflict",
+                              "status": 409,
+                              "detail": "E-mail já cadastrado",
+                              "instance": "/users"
+                            }
+                            """)
             )
     )
     @PostMapping

@@ -2,14 +2,9 @@ package br.com.beca.financeira.users.application.port.in;
 
 import br.com.beca.financeira.users.domain.User;
 
-import java.util.List;
-
-
 public interface UserUseCase {
 
     User create(String name, String email, String rawPassword);
-
-    List<User> findAll();
 
     User findById(Long id);
 
