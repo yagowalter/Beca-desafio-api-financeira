@@ -3,6 +3,7 @@ package br.com.beca.financeira.transactions.adapters.in.web;
 
 import br.com.beca.financeira.transactions.adapters.in.web.dto.CreateTransactionRequest;
 import br.com.beca.financeira.transactions.application.port.in.ExpenseAnalysisUseCase;
+import br.com.beca.financeira.transactions.application.port.in.TransactionCsvExportUseCase;
 import br.com.beca.financeira.transactions.application.port.in.TransactionUseCase;
 import br.com.beca.financeira.transactions.domain.ExpenseAnalysis;
 import br.com.beca.financeira.transactions.domain.Transaction;
@@ -25,10 +26,8 @@ import br.com.beca.financeira.transactions.adapters.in.security.MsUsersAuthentic
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
 import java.nio.charset.StandardCharsets;
-import java.text.NumberFormat;
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Locale;
 
 @Tag(name = "Transações", description = "Criação, consulta e análise de transações")
 @SecurityRequirement(name = "basicAuth")
@@ -38,13 +37,16 @@ public class TransactionController {
 
     private final TransactionUseCase transactionUseCase;
     private final ExpenseAnalysisUseCase expenseAnalysisUseCase;
+    private final TransactionCsvExportUseCase transactionCsvExportUseCase;
 
     public TransactionController(
             TransactionUseCase transactionUseCase,
-            ExpenseAnalysisUseCase expenseAnalysisUseCase
+            ExpenseAnalysisUseCase expenseAnalysisUseCase,
+            TransactionCsvExportUseCase transactionCsvExportUseCase
     ) {
         this.transactionUseCase = transactionUseCase;
         this.expenseAnalysisUseCase = expenseAnalysisUseCase;
+        this.transactionCsvExportUseCase = transactionCsvExportUseCase;
     }
 
     @Operation(
@@ -129,59 +131,37 @@ public class TransactionController {
             ),
             @ApiResponse(responseCode = "400", description = "Período inválido")
     })
+
     @GetMapping(value = "/export", produces = "text/csv")
     public ResponseEntity<byte[]> exportCsv(
             @AuthenticationPrincipal UserPrincipal principal,
             @Parameter(description = "Data inicial do período, no formato AAAA-MM-DD",
                     example = "2026-11-01")
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            LocalDate startDate,
             @Parameter(description = "Data final do período, no formato AAAA-MM-DD",
                     example = "2026-11-30")
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            LocalDate endDate
     ) {
-        List<Transaction> transactions = transactionUseCase.findAllByUserIdAndPeriod(
+        byte[] csv = transactionCsvExportUseCase.exportCsv(
                 principal.id(),
                 startDate,
                 endDate
         );
 
-        StringBuilder csv = new StringBuilder("\uFEFF");
-        csv.append("data;tipo;categoria;descricao;valor (R$);status;motivo_rejeicao\r\n");
-
-        NumberFormat amountFormat = NumberFormat.getNumberInstance(Locale.forLanguageTag("pt-BR"));
-        amountFormat.setMinimumFractionDigits(2);
-        amountFormat.setMaximumFractionDigits(2);
-
-        for (Transaction transaction : transactions) {
-            csv.append(csvField(transaction.
-                            getOccurredAt().
-                            toLocalDate().
-                            format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"))
-                    )).append(';')
-                    .append(csvField(transaction.getType().name())).append(';')
-                    .append(csvField(transaction.getCategory())).append(';')
-                    .append(csvField(transaction.getDescription())).append(';')
-                    .append(amountFormat.format(transaction.getAmount())).append(';')
-                    .append(csvField(transaction.getStatus() == null
-                            ? "" : transaction.getStatus().name())).append(';')
-                    .append(csvField(transaction.getRejectionReason()))
-                    .append("\r\n");
-        }
-
         HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(new MediaType("text", "csv", StandardCharsets.UTF_8));
-        headers.set(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"transacoes.csv\"");
+        headers.setContentType(
+                new MediaType("text", "csv", StandardCharsets.UTF_8)
+        );
+        headers.set(
+                HttpHeaders.CONTENT_DISPOSITION,
+                "attachment; filename=\"transacoes.csv\""
+        );
 
         return ResponseEntity.ok()
                 .headers(headers)
-                .body(csv.toString().getBytes(StandardCharsets.UTF_8));
-    }
-
-    private String csvField(String value) {
-        if (value == null) {
-            return "";
-        }
-        return "\"" + value.replace("\"", "\"\"") + "\"";
+                .body(csv);
     }
 
     @Operation(

@@ -117,4 +117,128 @@ class TransactionTest {
                 new BigDecimal("500.00")
         ));
     }
+
+    @Test
+    void shouldNotAllowTransferToOwnUser() {
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> new Transaction(
+                        7L,
+                        "Transferência teste",
+                        new BigDecimal("100.00"),
+                        TransactionType.TRANSFER,
+                        null,
+                        7L
+                )
+        );
+    }
+
+    @Test
+    void shouldAllowTransferToAnotherUser() {
+        Transaction transaction = new Transaction(
+                7L,
+                "Transferência teste",
+                new BigDecimal("100.00"),
+                TransactionType.TRANSFER,
+                null,
+                8L
+        );
+
+        assertEquals(7L, transaction.getUserId());
+        assertEquals(8L, transaction.getDestinationUserId());
+    }
+
+    @Test
+    void shouldRejectNullUserId() {
+        assertThrows(IllegalArgumentException.class, () ->
+                new Transaction(null, "Depósito", new BigDecimal("10.00"),
+                        TransactionType.DEPOSIT));
+    }
+
+    @Test
+    void shouldRejectNonPositiveUserId() {
+        assertThrows(IllegalArgumentException.class, () ->
+                new Transaction(0L, "Depósito", new BigDecimal("10.00"),
+                        TransactionType.DEPOSIT));
+    }
+
+    @Test
+    void shouldRejectNullOrBlankDescription() {
+        assertThrows(IllegalArgumentException.class, () ->
+                new Transaction(7L, null, new BigDecimal("10.00"),
+                        TransactionType.DEPOSIT));
+
+        assertThrows(IllegalArgumentException.class, () ->
+                new Transaction(7L, " ", new BigDecimal("10.00"),
+                        TransactionType.DEPOSIT));
+    }
+
+    @Test
+    void shouldRejectNullOrNonPositiveAmount() {
+        assertThrows(IllegalArgumentException.class, () ->
+                new Transaction(7L, "Depósito", null, TransactionType.DEPOSIT));
+
+        assertThrows(IllegalArgumentException.class, () ->
+                new Transaction(7L, "Depósito", BigDecimal.ZERO,
+                        TransactionType.DEPOSIT));
+
+        assertThrows(IllegalArgumentException.class, () ->
+                new Transaction(7L, "Depósito", new BigDecimal("-1.00"),
+                        TransactionType.DEPOSIT));
+    }
+
+    @Test
+    void shouldRejectNullTransactionType() {
+        assertThrows(IllegalArgumentException.class, () ->
+                new Transaction(7L, "Depósito", new BigDecimal("10.00"), null));
+    }
+
+    @Test
+    void shouldRejectPurchaseWithoutCategory() {
+        assertThrows(IllegalArgumentException.class, () ->
+                new Transaction(
+                        7L,
+                        "Compra teste",
+                        new BigDecimal("50.00"),
+                        TransactionType.PURCHASE,
+                        null,
+                        null
+                ));
+
+        assertThrows(IllegalArgumentException.class, () ->
+                new Transaction(
+                        7L,
+                        "Compra teste",
+                        new BigDecimal("50.00"),
+                        TransactionType.PURCHASE,
+                        " ",
+                        null
+                ));
+    }
+
+    @Test
+    void shouldRejectTransferWithoutDestination() {
+        assertThrows(IllegalArgumentException.class, () ->
+                new Transaction(
+                        7L,
+                        "Transferência teste",
+                        new BigDecimal("50.00"),
+                        TransactionType.TRANSFER,
+                        null,
+                        null
+                ));
+    }
+
+    @Test
+    void shouldRejectTransferWithNonPositiveDestination() {
+        assertThrows(IllegalArgumentException.class, () ->
+                new Transaction(
+                        7L,
+                        "Transferência teste",
+                        new BigDecimal("50.00"),
+                        TransactionType.TRANSFER,
+                        null,
+                        0L
+                ));
+    }
 }

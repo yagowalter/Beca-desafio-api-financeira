@@ -3,6 +3,7 @@ package br.com.beca.financeira.transactions.adapters.in.web;
 
 import br.com.beca.financeira.transactions.adapters.in.security.MsUsersAuthenticationProvider;
 import br.com.beca.financeira.transactions.application.port.in.ExpenseAnalysisUseCase;
+import br.com.beca.financeira.transactions.application.port.in.TransactionCsvExportUseCase;
 import br.com.beca.financeira.transactions.application.port.in.TransactionUseCase;
 import br.com.beca.financeira.transactions.application.port.out.UserIdentityPort;
 import br.com.beca.financeira.transactions.config.SecurityConfig;
@@ -48,6 +49,9 @@ class TransactionSecurityTest {
 
     @MockitoBean
     private ExpenseAnalysisUseCase expenseAnalysisUseCase;
+
+    @MockitoBean
+    private TransactionCsvExportUseCase transactionCsvExportUseCase;
 
     @MockitoBean
     private UserIdentityPort userIdentityPort;
@@ -270,8 +274,12 @@ class TransactionSecurityTest {
                 false
         );
 
-        when(transactionUseCase.findAllByUserIdAndPeriod(7L, start, end))
-                .thenReturn(List.of(transaction));
+        String csv = "\uFEFFdata;tipo;categoria;descricao;valor (R$);status;motivo_rejeicao\r\n"
+                + "10/11/2026;\"PURCHASE\";\"Alimentação\";\"Compra; teste "
+                + "\"\"especial\"\"\";25,00;\"REJECTED\";\"Limite excedido\"\r\n";
+
+        when(transactionCsvExportUseCase.exportCsv(7L, start, end))
+                .thenReturn(csv.getBytes(StandardCharsets.UTF_8));
 
         mockMvc.perform(get("/transactions/export")
                         .param("startDate", "2026-11-01")
@@ -292,6 +300,6 @@ class TransactionSecurityTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("25,00")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("\"Compra; teste \"\"especial\"\"\"")));
 
-        verify(transactionUseCase).findAllByUserIdAndPeriod(7L, start, end);
+        verify(transactionCsvExportUseCase).exportCsv(7L, start, end);
     }
 }

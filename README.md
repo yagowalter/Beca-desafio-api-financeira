@@ -136,6 +136,7 @@ Todas as rotas exigem Basic Auth. O MS-Transactions valida as credenciais no MS-
 | `GET` | `/transactions` | Listar transações do usuário autenticado |
 | `GET` | `/transactions/{id}` | Consultar uma transação própria |
 | `GET` | `/transactions/analysis` | Analisar despesas do usuário autenticado |
+| `GET` | `/transactions/export` | Exportar transações do usuário no período informado por `startDate` e `endDate` |
 
 A análise aceita opcionalmente `startDate` e `endDate`, no formato `AAAA-MM-DD`. Se as datas forem omitidas, a análise considera o mês atual.
 
@@ -203,7 +204,8 @@ O relatório HTML do JaCoCo é gerado em:
 `ms-users/target/site/jacoco/index.html`
 
 **Resultado da última execução verificada:**
-- Cobertura de linhas: **84,5%** (120 de 142 linhas).
+
+- Cobertura de linhas: **86,9%** (119 de 137 linhas).
 - Cobertura de instruções: 82%.
 - Cobertura de branches: 67%.
 - Meta mínima configurada: 80% de linhas.
@@ -219,11 +221,16 @@ cd ms-transactions
 .\mvnw.cmd clean verify
 ```
 
-Quando o JaCoCo estiver configurado e habilitado na branch utilizada, o relatório HTML poderá ser consultado em:
+O relatório HTML do JaCoCo é gerado em:
 
 `ms-transactions/target/site/jacoco/index.html`
 
-A cobertura do MS-Transactions ainda precisa ser verificada após a integração das alterações do PR #26. Por isso, nenhum percentual é informado neste momento.
+**Última execução verificada:**
+
+- Linhas cobertas: **459 de 477 (96,2%)**.
+- Instruções: **95%**.
+- Branches: **82%**.
+- Meta mínima: **80% de cobertura de linhas**.
 
 ### Observações
 

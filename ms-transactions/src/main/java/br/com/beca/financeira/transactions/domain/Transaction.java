@@ -41,8 +41,7 @@ public class Transaction {
             Long destinationUserId
     ) {
         validate(userId, description, amount, type);
-
-        validateTypeDetails(type, category, destinationUserId);
+        validateTypeDetails(userId, type, category, destinationUserId);
 
         this.userId = userId;
         this.description = description;
@@ -100,15 +99,15 @@ public class Transaction {
 
     ) {
         validate(userId, description, amount, type);
-        validateTypeDetails(type, category, destinationUserId);
+        validateTypeDetails(userId, type, category, destinationUserId);
         validateStatus(status, rejectionReason);
 
         if (id == null || id <= 0) {
-            throw new IllegalArgumentException("Identificador invalido");
+            throw new TransactionDomainException("Identificador invalido");
         }
 
         if (occurredAt == null) {
-            throw new IllegalArgumentException(
+            throw new TransactionDomainException(
                     "Data da transação é obrigatória"
             );
         }
@@ -148,21 +147,29 @@ public class Transaction {
     }
 
     private void validateTypeDetails(
+            Long userId,
             TransactionType type,
             String category,
             Long destinationUserId
     ) {
         if (type == TransactionType.PURCHASE
                 && (category == null || category.isBlank())) {
-            throw new IllegalArgumentException(
+            throw new TransactionDomainException(
                     "Categoria é obrigatória para compras"
             );
         }
 
         if (type == TransactionType.TRANSFER
                 && (destinationUserId == null || destinationUserId <= 0)) {
-            throw new IllegalArgumentException(
+            throw new TransactionDomainException(
                     "Usuário de destino é obrigatório para transferências"
+            );
+        }
+
+        if (type == TransactionType.TRANSFER
+                && userId.equals(destinationUserId)) {
+            throw new TransactionDomainException(
+                    "Não é permitido transferir para o próprio usuário"
             );
         }
     }
@@ -171,19 +178,19 @@ public class Transaction {
             Long userId, String description, BigDecimal amount, TransactionType type
     ) {
         if (userId == null || userId <= 0) {
-            throw new IllegalArgumentException("Usuário inválido!");
+            throw new TransactionDomainException("Usuário inválido!");
         }
 
         if (description == null || description.isBlank()) {
-            throw new IllegalArgumentException("Descrição é obrigatória");
+            throw new TransactionDomainException("Descrição é obrigatória");
         }
 
         if (amount == null || amount.signum() <= 0) {
-            throw new IllegalArgumentException("Valor deve ser maior do que zero");
+            throw new TransactionDomainException("Valor deve ser maior do que zero");
         }
 
         if (type == null) {
-            throw new IllegalArgumentException("Tipo da transação é obrigatório");
+            throw new TransactionDomainException("Tipo da transação é obrigatório");
         }
     }
 
@@ -244,12 +251,12 @@ public class Transaction {
     ) {
         if (status == TransactionStatus.REJECTED) {
             if (rejectionReason == null || rejectionReason.isBlank()) {
-                throw new IllegalArgumentException(
+                throw new TransactionDomainException(
                         "Motivo da rejeição é obrigatório"
                 );
             }
         } else if (rejectionReason != null) {
-            throw new IllegalArgumentException(
+            throw new TransactionDomainException(
                     "Somente transações rejeitadas podem ter motivo de rejeição"
             );
         }
