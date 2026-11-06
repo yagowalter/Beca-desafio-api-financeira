@@ -7,6 +7,7 @@ import br.com.beca.financeira.transactions.application.port.service.AccountNotFo
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
@@ -19,19 +20,24 @@ public class AccountLimitsAdapter implements AccountLimitsPort {
 
     @Override
     public AccountLimitsPort.AccountLimits findByUserId(Long userId) {
-       List<AccountLimitsResponse> accounts;
+        List<AccountLimitsResponse> accounts;
 
-       try {
-           accounts = restClient.get()
-                   .uri(accountsUrl + "?userId={userId}" , userId)
-                   .retrieve()
-                   .body(new ParameterizedTypeReference<>() {});
-       } catch (RestClientException exception) {
-           throw new AccountLimitsUnavailableException(
-                   "Não foi possível consultar saldo e limites da conta",
-                   exception
-           );
-       }
+        try {
+            accounts = restClient.get()
+                    .uri(accountsUrl + "?userId={userId}", userId)
+                    .retrieve()
+                    .body(new ParameterizedTypeReference<>() {
+                    });
+        } catch (HttpClientErrorException.NotFound exception) {
+            throw new AccountNotFoundException(
+                    "Conta não encontrada para o usuário " + userId
+            );
+        } catch (RestClientException exception) {
+            throw new AccountLimitsUnavailableException(
+                    "Não foi possível consultar saldo e limites da conta",
+                    exception
+            );
+        }
 
         if (accounts == null || accounts.isEmpty()) {
             throw new AccountNotFoundException(
