@@ -156,13 +156,25 @@ Todas as rotas exigem Basic Auth. O MS-Transactions valida as credenciais no MS-
 | Método | Endpoint | Descrição |
 |---|---|---|
 | `POST` | `/transactions` | Criar transação para o usuário autenticado |
-| `GET` | `/transactions` | Listar transações do usuário autenticado |
+| `GET` | `/transactions` | Listar transações do usuário autenticado com filtros opcionais de período e tipo |
 | `GET` | `/transactions/{id}` | Consultar uma transação própria |
 | `GET` | `/transactions/analysis` | Analisar despesas do usuário autenticado |
 | `GET` | `/transactions/export` | Exportar transações do usuário no período informado por `startDate` e `endDate` |
 | `GET` | `/transactions/account-limits` | Consultar saldo, limite diário e limite por transação do usuário autenticado, com dados da MockAPI |
 
-A análise aceita opcionalmente `startDate` e `endDate`, no formato `AAAA-MM-DD`. Se as datas forem omitidas, a análise considera o mês atual.
+A análise aceita opcionalmente `startDate` e `endDate`, no formato `DD-MM-AAAA`. Se as datas forem omitidas, a análise considera o mês atual.
+
+Os parâmetros de data das rotas de transações usam o formato `DD-MM-AAAA`, por exemplo `01-11-2026`. Na listagem, `startDate` e `endDate` devem ser informadas juntas; o parâmetro `type` pode ser usado sozinho ou combinado com o período. A exportação CSV aceita períodos de até 12 meses.
+
+Exemplos de filtros para a listagem:
+
+```http
+GET http://localhost:8081/transactions?type=DEPOSIT
+GET http://localhost:8081/transactions?startDate=01-11-2026&endDate=30-11-2026
+GET http://localhost:8081/transactions?startDate=01-11-2026&endDate=30-11-2026&type=PURCHASE
+```
+
+As datas inicial e final são inclusivas. A listagem retorna somente transações do usuário autenticado; sem filtros, retorna todas as transações desse usuário.
 
 Os tipos de transação são `DEPOSIT`, `WITHDRAW`, `TRANSFER` e `PURCHASE`.
 
@@ -251,9 +263,9 @@ O relatório HTML do JaCoCo é gerado em:
 
 **Última execução verificada (`.\mvnw.cmd clean verify`):**
 
-- Linhas cobertas: **464 de 489 (94,9%)**.
-- Instruções: **94%**.
-- Branches: **82%**.
+- Linhas cobertas: **499 de 518 (96,3%)**.
+- Instruções: **95%**.
+- Branches: **83%**.
 - Meta mínima: **80% de cobertura de linhas** — cumprida.
 
 ### Observações

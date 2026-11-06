@@ -26,5 +26,12 @@ public interface TransactionUseCase {
             LocalDate endDate
     );
 
+    List<Transaction> findAllByUserIdAndFilters(
+            Long userId,
+            LocalDate startDate,
+            LocalDate endDate,
+            TransactionType type
+    );
+
     Transaction findByIdAndUserId(Long id, Long userId);
 }

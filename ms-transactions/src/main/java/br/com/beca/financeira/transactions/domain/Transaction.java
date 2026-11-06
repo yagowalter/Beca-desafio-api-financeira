@@ -41,7 +41,14 @@ public class Transaction {
             Long destinationUserId
     ) {
         validate(userId, description, amount, type);
-        validateTypeDetails(userId, type, category, destinationUserId);
+        validateTypeDetails(type, category, destinationUserId);
+
+        if (type == TransactionType.TRANSFER
+                && userId.equals(destinationUserId)) {
+            throw new TransactionDomainException(
+                    "Não é permitido transferir para o próprio usuário"
+            );
+        }
 
         this.userId = userId;
         this.description = description;
@@ -99,7 +106,7 @@ public class Transaction {
 
     ) {
         validate(userId, description, amount, type);
-        validateTypeDetails(userId, type, category, destinationUserId);
+        validateTypeDetails(type, category, destinationUserId);
         validateStatus(status, rejectionReason);
 
         if (id == null || id <= 0) {
@@ -147,7 +154,6 @@ public class Transaction {
     }
 
     private void validateTypeDetails(
-            Long userId,
             TransactionType type,
             String category,
             Long destinationUserId
@@ -163,13 +169,6 @@ public class Transaction {
                 && (destinationUserId == null || destinationUserId <= 0)) {
             throw new TransactionDomainException(
                     "Usuário de destino é obrigatório para transferências"
-            );
-        }
-
-        if (type == TransactionType.TRANSFER
-                && userId.equals(destinationUserId)) {
-            throw new TransactionDomainException(
-                    "Não é permitido transferir para o próprio usuário"
             );
         }
     }
