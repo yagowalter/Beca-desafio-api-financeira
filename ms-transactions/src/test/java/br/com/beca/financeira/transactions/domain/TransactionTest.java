@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -131,6 +132,30 @@ class TransactionTest {
                         7L
                 )
         );
+    }
+
+    @Test
+    void shouldAllowReconstructionOfLegacySelfTransfer() {
+        Transaction transaction = new Transaction(
+                1L,
+                7L,
+                "Transferência antiga",
+                new BigDecimal("100.00"),
+                TransactionType.TRANSFER,
+                LocalDateTime.of(2025, 1, 15, 10, 0),
+                null,
+                7L,
+                TransactionStatus.APPROVED,
+                null,
+                null,
+                null,
+                null,
+                null,
+                false
+        );
+
+        assertEquals(7L, transaction.getUserId());
+        assertEquals(7L, transaction.getDestinationUserId());
     }
 
     @Test

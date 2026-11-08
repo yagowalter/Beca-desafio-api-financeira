@@ -1,5 +1,6 @@
 package br.com.beca.financeira.transactions.adapters.out.persistence;
 
+import br.com.beca.financeira.transactions.domain.TransactionType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -13,6 +14,19 @@ import java.util.Optional;
 public interface TransactionJpaRepository
         extends JpaRepository
         <br.com.beca.financeira.transactions.adapters.out.persistence.TransactionEntity, Long> {
+
+
+    List<TransactionEntity> findAllByUserIdAndType(
+            Long userId,
+            TransactionType type
+    );
+
+    List<TransactionEntity> findAllByUserIdAndTypeAndOccurredAtGreaterThanEqualAndOccurredAtLessThan(
+            Long userId,
+            TransactionType type,
+            LocalDateTime startInclusive,
+            LocalDateTime endExclusive
+    );
 
     @Query(
             """

@@ -271,4 +271,48 @@ class TransactionPersistenceAdapterTest {
 
         assertTrue(result.isEmpty());
     }
+
+    @Test
+    void shouldFindTransactionsByUserAndTypeAndMapToDomain() {
+        when(jpaRepository.findAllByUserIdAndType(
+                7L, TransactionType.DEPOSIT
+        )).thenReturn(List.of(createEntity(12L)));
+
+        List<Transaction> result =
+                adapter.findAllByUserIdAndType(7L, TransactionType.DEPOSIT);
+
+        assertEquals(1, result.size());
+        assertEquals(12L, result.get(0).getId());
+        assertEquals(7L, result.get(0).getUserId());
+
+        verify(jpaRepository).findAllByUserIdAndType(
+                7L, TransactionType.DEPOSIT
+        );
+    }
+
+    @Test
+    void shouldFindTransactionsByUserTypeAndPeriodAndMapToDomain() {
+        Long userId = 7L;
+        TransactionType type = TransactionType.DEPOSIT;
+        LocalDateTime start = LocalDateTime.of(2026, 11, 1, 0, 0);
+        LocalDateTime endExclusive = LocalDateTime.of(2026, 12, 1, 0, 0);
+
+        when(jpaRepository
+                .findAllByUserIdAndTypeAndOccurredAtGreaterThanEqualAndOccurredAtLessThan(
+                        userId, type, start, endExclusive
+                )).thenReturn(List.of(createEntity(12L)));
+
+        List<Transaction> result = adapter.findAllByUserIdAndTypeAndPeriod(
+                userId, type, start, endExclusive
+        );
+
+        assertEquals(1, result.size());
+        assertEquals(12L, result.get(0).getId());
+        assertEquals(userId, result.get(0).getUserId());
+
+        verify(jpaRepository)
+                .findAllByUserIdAndTypeAndOccurredAtGreaterThanEqualAndOccurredAtLessThan(
+                        userId, type, start, endExclusive
+                );
+    }
 }
