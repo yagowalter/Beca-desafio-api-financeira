@@ -17,8 +17,12 @@ public class TransactionRequestValidator
             return true;
         }
 
-        boolean categoryMissing =
+        boolean categoryRequired =
                 request.getType() == TransactionType.PURCHASE
+                        || request.getType() == TransactionType.TRANSFER;
+
+        boolean categoryMissing =
+                categoryRequired
                         && (request.getCategory() == null
                         || request.getCategory().isBlank());
 
@@ -34,9 +38,11 @@ public class TransactionRequestValidator
         context.disableDefaultConstraintViolation();
 
         if (categoryMissing) {
-            context.buildConstraintViolationWithTemplate(
-                            "Categoria é obrigatória para compras"
-                    )
+            String message = request.getType() == TransactionType.PURCHASE
+                    ? "Categoria é obrigatória para compras"
+                    : "Categoria é obrigatória para transferências";
+
+            context.buildConstraintViolationWithTemplate(message)
                     .addPropertyNode("category")
                     .addConstraintViolation();
         }

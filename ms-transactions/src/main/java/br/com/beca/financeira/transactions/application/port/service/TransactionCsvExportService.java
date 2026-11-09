@@ -16,8 +16,7 @@ import java.util.Locale;
 @Service
 public class TransactionCsvExportService implements TransactionCsvExportUseCase {
 
-    private static final DateTimeFormatter DATE_FORMAT =
-            DateTimeFormatter.ofPattern("dd-MM-yyyy");
+    private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ISO_LOCAL_DATE;
 
     private final TransactionUseCase transactionUseCase;
 
@@ -48,8 +47,7 @@ public class TransactionCsvExportService implements TransactionCsvExportUseCase 
         amountFormat.setMinimumFractionDigits(2);
         amountFormat.setMaximumFractionDigits(2);
 
-        for (
-                Transaction transaction : transactions) {
+        for (Transaction transaction : transactions) {
             csv.append(csvField(transaction.getOccurredAt()
                             .toLocalDate().format(DATE_FORMAT))).append(';')
                     .append(csvField(transaction.getType().name())).append(";")
@@ -62,9 +60,7 @@ public class TransactionCsvExportService implements TransactionCsvExportUseCase 
                     .append("\r\n");
         }
 
-        return csv.toString().
-
-                getBytes(StandardCharsets.UTF_8);
+        return csv.toString().getBytes(StandardCharsets.UTF_8);
     }
 
     private String csvField(String value) {

@@ -128,7 +128,7 @@ class TransactionTest {
                         "Transferência teste",
                         new BigDecimal("100.00"),
                         TransactionType.TRANSFER,
-                        null,
+                        "Transferência",
                         7L
                 )
         );
@@ -165,7 +165,7 @@ class TransactionTest {
                 "Transferência teste",
                 new BigDecimal("100.00"),
                 TransactionType.TRANSFER,
-                null,
+                "Transferência",
                 8L
         );
 
@@ -249,7 +249,7 @@ class TransactionTest {
                         "Transferência teste",
                         new BigDecimal("50.00"),
                         TransactionType.TRANSFER,
-                        null,
+                        "Transferência",
                         null
                 ));
     }
@@ -262,8 +262,33 @@ class TransactionTest {
                         "Transferência teste",
                         new BigDecimal("50.00"),
                         TransactionType.TRANSFER,
-                        null,
+                        "Transferência",
                         0L
                 ));
+    }
+
+    @Test
+    void shouldRejectTransferWithoutCategory() {
+        assertThrows(TransactionDomainException.class, () ->
+                new Transaction(
+                        7L,
+                        "Transferência teste",
+                        new BigDecimal("50.00"),
+                        TransactionType.TRANSFER,
+                        null,
+                        8L
+                )
+        );
+
+        assertThrows(TransactionDomainException.class, () ->
+                new Transaction(
+                        7L,
+                        "Transferência teste",
+                        new BigDecimal("50.00"),
+                        TransactionType.TRANSFER,
+                        " ",
+                        8L
+                )
+        );
     }
 }

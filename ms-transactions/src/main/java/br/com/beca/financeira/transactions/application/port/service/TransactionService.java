@@ -5,6 +5,7 @@ import br.com.beca.financeira.transactions.application.port.out.ExchangeRatePort
 import br.com.beca.financeira.transactions.application.port.out.TransactionRepositoryPort;
 import br.com.beca.financeira.transactions.domain.Transaction;
 import br.com.beca.financeira.transactions.domain.TransactionDomainException;
+import br.com.beca.financeira.transactions.domain.TransactionStatus;
 import br.com.beca.financeira.transactions.domain.TransactionType;
 import org.springframework.stereotype.Service;
 import br.com.beca.financeira.transactions.application.port.out.AccountLimitsPort;
@@ -48,17 +49,19 @@ public class TransactionService implements TransactionUseCase {
 
         registerLatestAvailableExchangeRates(transaction);
 
+        AccountLimitsPort.AccountLimits senderAccount =
+                accountLimitsPort.findByUserId(userId);
+
+        String rejectionReason = null;
+
         if (type == TransactionType.WITHDRAW
                 || type == TransactionType.TRANSFER
                 || type == TransactionType.PURCHASE) {
-            AccountLimitsPort.AccountLimits account =
-                    accountLimitsPort.findByUserId(userId);
 
-            String rejectionReason =
-                    transaction.validateBalanceAndTransactionLimit(
-                            account.balance(),
-                            account.perTransactionLimit()
-                    );
+            rejectionReason = transaction.validateBalanceAndTransactionLimit(
+                    senderAccount.balance(),
+                    senderAccount.perTransactionLimit()
+            );
 
             if (rejectionReason == null) {
                 LocalDate today = LocalDate.now();
@@ -72,23 +75,67 @@ public class TransactionService implements TransactionUseCase {
 
                 rejectionReason = transaction.validateDailyLimit(
                         spentToday,
-                        account.dailyLimit()
+                        senderAccount.dailyLimit()
                 );
-            }
-
-            if (rejectionReason != null) {
-                transaction.reject(rejectionReason);
-            } else {
-                transaction.approve();
             }
         }
 
-        if (type == TransactionType.DEPOSIT) {
+        AccountLimitsPort.AccountLimits recipientAccount = null;
+
+        if (rejectionReason == null && type == TransactionType.TRANSFER) {
+            recipientAccount = accountLimitsPort.findByUserId(destinationUserId);
+        }
+
+        if (rejectionReason != null) {
+            transaction.reject(rejectionReason);
+        } else {
             transaction.approve();
         }
 
+        Transaction savedTransaction = transactionRepositoryPort.save(transaction);
 
-        return transactionRepositoryPort.save(transaction);
+        if (savedTransaction.getStatus() == TransactionStatus.APPROVED) {
+            BigDecimal newSenderBalance;
+
+            if (type == TransactionType.DEPOSIT) {
+                newSenderBalance = senderAccount.balance().add(amount);
+            } else {
+                newSenderBalance = senderAccount.balance().subtract(amount);
+            }
+
+            accountLimitsPort.updateBalance(userId, newSenderBalance);
+
+            if (type == TransactionType.TRANSFER) {
+                BigDecimal newRecipientBalance =
+                        recipientAccount.balance().add(amount);
+
+                accountLimitsPort.updateBalance(
+                        destinationUserId,
+                        newRecipientBalance
+                );
+
+                Transaction receivedCredit = new Transaction(
+                        destinationUserId,
+                        "Transferência recebida do usuário " + userId,
+                        amount,
+                        TransactionType.DEPOSIT,
+                        null,
+                        null
+                );
+
+                receivedCredit.registerExchangeRates(
+                        savedTransaction.getUsdRate(),
+                        savedTransaction.getUsdQuoteDate(),
+                        savedTransaction.getEurRate(),
+                        savedTransaction.getEurQuoteDate()
+                );
+
+                receivedCredit.approve();
+                transactionRepositoryPort.save(receivedCredit);
+            }
+        }
+
+        return savedTransaction;
     }
 
     private void registerLatestAvailableExchangeRates(Transaction transaction) {

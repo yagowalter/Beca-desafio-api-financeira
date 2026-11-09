@@ -291,8 +291,8 @@ class TransactionSecurityTest {
                 .thenReturn(csv.getBytes(StandardCharsets.UTF_8));
 
         mockMvc.perform(get("/transactions/export")
-                        .param("startDate", "01-11-2026")
-                        .param("endDate", "30-11-2026")
+                        .param("startDate", "2026-11-01")
+                        .param("endDate", "2026-11-30")
                         .header(
                                 HttpHeaders.AUTHORIZATION,
                                 basicAuth("ana@example.com", "SenhaTeste123!")
@@ -386,8 +386,8 @@ class TransactionSecurityTest {
         )).thenReturn(List.of());
 
         mockMvc.perform(get("/transactions")
-                        .param("startDate", "01-11-2026")
-                        .param("endDate", "30-11-2026")
+                        .param("startDate", "2026-11-01")
+                        .param("endDate", "2026-11-30")
                         .param("type", "PURCHASE")
                         .header(
                                 HttpHeaders.AUTHORIZATION,

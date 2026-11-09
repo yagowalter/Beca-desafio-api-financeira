@@ -11,6 +11,7 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @Component
@@ -52,6 +53,31 @@ public class AccountLimitsAdapter implements AccountLimitsPort {
                 account.getDailyLimit(),
                 account.getPerTransactionLimit()
         );
+    }
+
+    @Override
+    public void updateBalance(Long userId, BigDecimal newBalance) {
+        AccountLimitsPort.AccountLimits current = findByUserId(userId);
+
+        AccountLimitsResponse updateAccount = new AccountLimitsResponse();
+        updateAccount.setUserId(userId);
+        updateAccount.setBalance(newBalance);
+        updateAccount.setDailyLimit(current.dailyLimit());
+        updateAccount.setPerTransactionLimit(current.perTransactionLimit());
+
+        try {
+            restClient.put()
+                    .uri(accountsUrl + "/{userId}", userId)
+                    .body(updateAccount)
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (RestClientException exception) {
+            throw new AccountLimitsUnavailableException(
+                    "Não foi possível atualizar o saldo da conta",
+                    exception
+            );
+        }
+
     }
 
     public AccountLimitsAdapter(

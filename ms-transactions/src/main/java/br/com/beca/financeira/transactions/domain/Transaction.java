@@ -44,6 +44,13 @@ public class Transaction {
         validateTypeDetails(type, category, destinationUserId);
 
         if (type == TransactionType.TRANSFER
+                && (category == null || category.isBlank())) {
+            throw new TransactionDomainException(
+                    "Categoria é obrigatória para transferências"
+            );
+        }
+
+        if (type == TransactionType.TRANSFER
                 && userId.equals(destinationUserId)) {
             throw new TransactionDomainException(
                     "Não é permitido transferir para o próprio usuário"

@@ -25,9 +25,15 @@ import static org.mockito.Mockito.*;
 
 class TransactionServiceTest {
 
+    private void mockSuccessfulSave(TransactionRepositoryPort repository) {
+        when(repository.save(any(Transaction.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+    }
+
     @Test
     void shouldNotSaveTransactionWhenAccountIsNotFound() {
         TransactionRepositoryPort transactionRepositoryPort = mock(TransactionRepositoryPort.class);
+        mockSuccessfulSave(transactionRepositoryPort);
         AccountLimitsPort accountLimitsPort = mock(AccountLimitsPort.class);
         ExchangeRatePort exchangeRatePort = mock(ExchangeRatePort.class);
 
@@ -69,6 +75,7 @@ class TransactionServiceTest {
     @Test
     void shouldNotSaveTransactionWhenAccountServiceIsUnavailable() {
         TransactionRepositoryPort transactionRepositoryPort = mock(TransactionRepositoryPort.class);
+        mockSuccessfulSave(transactionRepositoryPort);
         AccountLimitsPort accountLimitsPort = mock(AccountLimitsPort.class);
         ExchangeRatePort exchangeRatePort = mock(ExchangeRatePort.class);
 
@@ -109,11 +116,19 @@ class TransactionServiceTest {
     @Test
     void shouldSaveTransactionWithoutExchangeRatesWhenNoQuoteIsAvailable() {
         TransactionRepositoryPort transactionRepositoryPort = mock(TransactionRepositoryPort.class);
+        mockSuccessfulSave(transactionRepositoryPort);
         AccountLimitsPort accountLimitsPort = mock(AccountLimitsPort.class);
         ExchangeRatePort exchangeRatePort = mock(ExchangeRatePort.class);
 
         when(exchangeRatePort.findByCurrencyAndDate(anyString(), any(LocalDate.class)))
                 .thenThrow(new IllegalStateException("Cotação não encontrada"));
+
+        when(accountLimitsPort.findByUserId(7L))
+                .thenReturn(new AccountLimitsPort.AccountLimits(
+                        new BigDecimal("1000.00"),
+                        new BigDecimal("1000.00"),
+                        new BigDecimal("500.00")
+                ));
 
         TransactionService service = new TransactionService(
                 transactionRepositoryPort,
@@ -139,11 +154,19 @@ class TransactionServiceTest {
     @Test
     void shouldUsePreviousDateWhenTodaysQuoteIsUnavailable() {
         TransactionRepositoryPort transactionRepositoryPort = mock(TransactionRepositoryPort.class);
+        mockSuccessfulSave(transactionRepositoryPort);
         AccountLimitsPort accountLimitsPort = mock(AccountLimitsPort.class);
         ExchangeRatePort exchangeRatePort = mock(ExchangeRatePort.class);
 
         LocalDate today = LocalDate.now();
         LocalDate yesterDay = today.minusDays(1);
+
+        when(accountLimitsPort.findByUserId(7L))
+                .thenReturn(new AccountLimitsPort.AccountLimits(
+                        new BigDecimal("1000.00"),
+                        new BigDecimal("1000.00"),
+                        new BigDecimal("500.00")
+                ));
 
         when(exchangeRatePort.findByCurrencyAndDate("USD", today))
                 .thenThrow(HttpClientErrorException.create(
@@ -188,8 +211,16 @@ class TransactionServiceTest {
     @Test
     void shouldSaveTransactionWithoutExchangeRatesWhenCommunicationFails() {
         TransactionRepositoryPort transactionRepositoryPort = mock(TransactionRepositoryPort.class);
+        mockSuccessfulSave(transactionRepositoryPort);
         AccountLimitsPort accountLimitsPort = mock(AccountLimitsPort.class);
         ExchangeRatePort exchangeRatePort = mock(ExchangeRatePort.class);
+
+        when(accountLimitsPort.findByUserId(7L))
+                .thenReturn(new AccountLimitsPort.AccountLimits(
+                        new BigDecimal("1000.00"),
+                        new BigDecimal("1000.00"),
+                        new BigDecimal("500.00")
+                ));
 
         when(exchangeRatePort.findByCurrencyAndDate("USD", LocalDate.now()))
                 .thenThrow(new ResourceAccessException("Falha de comunicação"));
@@ -219,8 +250,8 @@ class TransactionServiceTest {
 
     @Test
     void shouldRejectTransactionWhenBalanceIsInsufficient() {
-        TransactionRepositoryPort transactionRepositoryPort =
-                mock(TransactionRepositoryPort.class);
+        TransactionRepositoryPort transactionRepositoryPort = mock(TransactionRepositoryPort.class);
+        mockSuccessfulSave(transactionRepositoryPort);
         AccountLimitsPort accountLimitsPort = mock(AccountLimitsPort.class);
         ExchangeRatePort exchangeRatePort = mock(ExchangeRatePort.class);
 
@@ -271,8 +302,8 @@ class TransactionServiceTest {
 
     @Test
     void shouldRejectTransactionWhenPerTransactionLimitIsExceeded() {
-        TransactionRepositoryPort transactionRepositoryPort =
-                mock(TransactionRepositoryPort.class);
+        TransactionRepositoryPort transactionRepositoryPort = mock(TransactionRepositoryPort.class);
+        mockSuccessfulSave(transactionRepositoryPort);
         AccountLimitsPort accountLimitsPort = mock(AccountLimitsPort.class);
         ExchangeRatePort exchangeRatePort = mock(ExchangeRatePort.class);
 
@@ -323,8 +354,8 @@ class TransactionServiceTest {
 
     @Test
     void shouldRejectTransactionWhenDailyLimitIsExceeded() {
-        TransactionRepositoryPort transactionRepositoryPort =
-                mock(TransactionRepositoryPort.class);
+        TransactionRepositoryPort transactionRepositoryPort = mock(TransactionRepositoryPort.class);
+        mockSuccessfulSave(transactionRepositoryPort);
         AccountLimitsPort accountLimitsPort = mock(AccountLimitsPort.class);
         ExchangeRatePort exchangeRatePort = mock(ExchangeRatePort.class);
 
@@ -376,8 +407,8 @@ class TransactionServiceTest {
 
     @Test
     void shouldApproveTransactionWhenBalanceAndLimitsAreSufficient() {
-        TransactionRepositoryPort transactionRepositoryPort =
-                mock(TransactionRepositoryPort.class);
+        TransactionRepositoryPort transactionRepositoryPort = mock(TransactionRepositoryPort.class);
+        mockSuccessfulSave(transactionRepositoryPort);
         AccountLimitsPort accountLimitsPort = mock(AccountLimitsPort.class);
         ExchangeRatePort exchangeRatePort = mock(ExchangeRatePort.class);
 
@@ -572,6 +603,135 @@ class TransactionServiceTest {
         );
 
         verifyNoInteractions(repository);
+    }
+
+    @Test
+    void shouldSaveIncomingCreditForRecipientWhenTransferIsApproved() {
+        TransactionRepositoryPort transactionRepositoryPort =
+                mock(TransactionRepositoryPort.class);
+        AccountLimitsPort accountLimitsPort = mock(AccountLimitsPort.class);
+        ExchangeRatePort exchangeRatePort = mock(ExchangeRatePort.class);
+
+        LocalDate today = LocalDate.now();
+
+        when(exchangeRatePort.findByCurrencyAndDate("USD", today))
+                .thenReturn(new ExchangeRatePort.ExchangeRate(
+                        new BigDecimal("5.00"), today
+                ));
+        when(exchangeRatePort.findByCurrencyAndDate("EUR", today))
+                .thenReturn(new ExchangeRatePort.ExchangeRate(
+                        new BigDecimal("5.50"), today
+                ));
+
+        when(accountLimitsPort.findByUserId(7L))
+                .thenReturn(new AccountLimitsPort.AccountLimits(
+                        new BigDecimal("1000.00"),
+                        new BigDecimal("1000.00"),
+                        new BigDecimal("500.00")
+                ));
+        when(accountLimitsPort.findByUserId(8L))
+                .thenReturn(new AccountLimitsPort.AccountLimits(
+                        new BigDecimal("50.00"),
+                        new BigDecimal("1000.00"),
+                        new BigDecimal("500.00")
+                ));
+
+        when(transactionRepositoryPort.sumApprovedOutflowsByUserIdAndPeriod(
+                eq(7L), any(), any()
+        )).thenReturn(BigDecimal.ZERO);
+
+        mockSuccessfulSave(transactionRepositoryPort);
+
+        TransactionService service = new TransactionService(
+                transactionRepositoryPort,
+                accountLimitsPort,
+                exchangeRatePort
+        );
+
+        service.create(
+                7L,
+                "Transferência para usuário 8",
+                new BigDecimal("100.00"),
+                TransactionType.TRANSFER,
+                "Transferência",
+                8L
+        );
+
+        ArgumentCaptor<Transaction> captor =
+                ArgumentCaptor.forClass(Transaction.class);
+        verify(transactionRepositoryPort, times(2)).save(captor.capture());
+
+        List<Transaction> savedTransactions = captor.getAllValues();
+        Transaction outgoing = savedTransactions.get(0);
+        Transaction incomingCredit = savedTransactions.get(1);
+
+        assertEquals(TransactionType.TRANSFER, outgoing.getType());
+        assertEquals(7L, outgoing.getUserId());
+        assertEquals(TransactionStatus.APPROVED, outgoing.getStatus());
+
+        assertEquals(TransactionType.DEPOSIT, incomingCredit.getType());
+        assertEquals(8L, incomingCredit.getUserId());
+        assertEquals(new BigDecimal("100.00"), incomingCredit.getAmount());
+        assertEquals(TransactionStatus.APPROVED, incomingCredit.getStatus());
+
+        verify(accountLimitsPort).updateBalance(
+                7L, new BigDecimal("900.00")
+        );
+        verify(accountLimitsPort).updateBalance(
+                8L, new BigDecimal("150.00")
+        );
+    }
+
+    @Test
+    void shouldNotCreateIncomingCreditWhenTransferIsRejected() {
+        TransactionRepositoryPort transactionRepositoryPort =
+                mock(TransactionRepositoryPort.class);
+        AccountLimitsPort accountLimitsPort = mock(AccountLimitsPort.class);
+        ExchangeRatePort exchangeRatePort = mock(ExchangeRatePort.class);
+
+        LocalDate today = LocalDate.now();
+
+        when(exchangeRatePort.findByCurrencyAndDate("USD", today))
+                .thenReturn(new ExchangeRatePort.ExchangeRate(
+                        new BigDecimal("5.00"), today
+                ));
+        when(exchangeRatePort.findByCurrencyAndDate("EUR", today))
+                .thenReturn(new ExchangeRatePort.ExchangeRate(
+                        new BigDecimal("5.50"), today
+                ));
+
+        when(accountLimitsPort.findByUserId(7L))
+                .thenReturn(new AccountLimitsPort.AccountLimits(
+                        new BigDecimal("50.00"),
+                        new BigDecimal("1000.00"),
+                        new BigDecimal("500.00")
+                ));
+
+        mockSuccessfulSave(transactionRepositoryPort);
+
+        TransactionService service = new TransactionService(
+                transactionRepositoryPort,
+                accountLimitsPort,
+                exchangeRatePort
+        );
+
+        service.create(
+                7L,
+                "Transferência para usuário 8",
+                new BigDecimal("100.00"),
+                TransactionType.TRANSFER,
+                "Transferência",
+                8L
+        );
+
+        ArgumentCaptor<Transaction> captor =
+                ArgumentCaptor.forClass(Transaction.class);
+        verify(transactionRepositoryPort).save(captor.capture());
+
+        assertEquals(TransactionStatus.REJECTED, captor.getValue().getStatus());
+        assertEquals(TransactionType.TRANSFER, captor.getValue().getType());
+
+        verify(accountLimitsPort, never()).updateBalance(eq(8L), any());
     }
 
 }

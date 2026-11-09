@@ -44,6 +44,7 @@ class TransactionRequestValidatorTest {
     void shouldRejectTransferWithoutDestinationUser() {
         CreateTransactionRequest request = validRequest();
         request.setType(TransactionType.TRANSFER);
+        request.setCategory("Transferência");
 
         assertViolation(
                 request,
@@ -56,6 +57,7 @@ class TransactionRequestValidatorTest {
     void shouldRejectTransferWithNonPositiveDestinationUserId() {
         CreateTransactionRequest request = validRequest();
         request.setType(TransactionType.TRANSFER);
+        request.setCategory("Transferência");
         request.setDestinationUserId(0L);
 
         assertViolation(
@@ -99,5 +101,28 @@ class TransactionRequestValidatorTest {
                 "Esperava erro no campo " + expectedField + ": " + expectedMessage
         );
         assertTrue(violationFound);
+    }
+
+    @Test
+    void shouldRejectTransferWithoutCategory() {
+        CreateTransactionRequest request = validRequest();
+        request.setType(TransactionType.TRANSFER);
+        request.setDestinationUserId(54L);
+
+        assertViolation(
+                request,
+                "category",
+                "Categoria é obrigatória para transferências"
+        );
+    }
+
+    @Test
+    void shouldAcceptTransferWithCategoryAndDestination() {
+        CreateTransactionRequest request = validRequest();
+        request.setType(TransactionType.TRANSFER);
+        request.setCategory("Transferência");
+        request.setDestinationUserId(54L);
+
+        assertTrue(validator.validate(request).isEmpty());
     }
 }
