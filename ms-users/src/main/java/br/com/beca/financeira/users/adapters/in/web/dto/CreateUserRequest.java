@@ -13,7 +13,7 @@ public class CreateUserRequest {
     private String name;
 
     @NotBlank
-    @Email
+    @Email(message = "E-mail inválido")
     @Size(max = 150)
     @Schema(description = "E-mail usado para login", example = "ana.silva@example.com")
     private String email;

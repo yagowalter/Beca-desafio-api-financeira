@@ -94,14 +94,14 @@ public class TransactionController {
     @GetMapping
     public ResponseEntity<List<Transaction>> findAll(
             @AuthenticationPrincipal UserPrincipal principal,
-            @Parameter(description = "Data inicial do período, no formato DD-MM-AAAA",
-                    example = "01-11-2026")
+            @Parameter(description = "Data inicial do período, no formato ISO (AAAA-MM-DD)",
+                    example = "2026-11-01")
             @RequestParam(required = false)
-            @DateTimeFormat(pattern = "dd-MM-yyyy") LocalDate startDate,
-            @Parameter(description = "Data final do período, no formato DD-MM-AAAA",
-                    example = "30-11-2026")
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @Parameter(description = "Data final do período, no formato ISO (AAAA-MM-DD)",
+                    example = "2026-11-30")
             @RequestParam(required = false)
-            @DateTimeFormat(pattern = "dd-MM-yyyy") LocalDate endDate,
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
             @Parameter(description = "Tipo da transação", example = "PURCHASE")
             @RequestParam(required = false) TransactionType type
     ) {
@@ -126,14 +126,14 @@ public class TransactionController {
     @GetMapping("/analysis")
     public ResponseEntity<ExpenseAnalysis> analyzeExpenses(
             @AuthenticationPrincipal UserPrincipal principal,
-            @Parameter(description = "Data inicial do período, no formato DD-MM-AAAA",
-                    example = "01-11-2026")
+            @Parameter(description = "Data inicial do período, no formato ISO (AAAA-MM-DD)",
+                    example = "2026-11-01")
             @RequestParam(required = false)
-            @DateTimeFormat(pattern = "dd-MM-yyyy") LocalDate startDate,
-            @Parameter(description = "Data final do período, no formato DD-MM-AAAA",
-                    example = "30-11-2026")
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @Parameter(description = "Data final do período, no formato ISO (AAAA-MM-DD)",
+                    example = "2026-11-30")
             @RequestParam(required = false)
-            @DateTimeFormat(pattern = "dd-MM-yyyy") LocalDate endDate
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate
     ) {
         return ResponseEntity.ok(
                 expenseAnalysisUseCase.analyzeExpenses(
@@ -146,7 +146,7 @@ public class TransactionController {
 
     @Operation(
             summary = "Exportar transações em CSV",
-            description = "Baixa as transações do usuário autenticado no período informado. As datas devem estar no formato DD-MM-AAAA."
+            description = "Baixa as transações do usuário autenticado no período informado. As datas devem estar no formato ISO (AAAA-MM-DD)."
     )
     @ApiResponses({
             @ApiResponse(
@@ -163,13 +163,13 @@ public class TransactionController {
     @GetMapping(value = "/export", produces = "text/csv")
     public ResponseEntity<byte[]> exportCsv(
             @AuthenticationPrincipal UserPrincipal principal,
-            @Parameter(description = "Data inicial do período, no formato DD-MM-AAAA",
-                    example = "01-11-2026")
-            @RequestParam @DateTimeFormat(pattern = "dd-MM-yyyy")
+            @Parameter(description = "Data inicial do período, no formato ISO (AAAA-MM-DD)",
+                    example = "2026-11-01")
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
             LocalDate startDate,
-            @Parameter(description = "Data final do período, no formato DD-MM-AAAA",
-                    example = "30-11-2026")
-            @RequestParam @DateTimeFormat(pattern = "dd-MM-yyyy")
+            @Parameter(description = "Data final do período, no formato ISO (AAAA-MM-DD)",
+                    example = "2026-11-30")
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
             LocalDate endDate
     ) {
         byte[] csv = transactionCsvExportUseCase.exportCsv(

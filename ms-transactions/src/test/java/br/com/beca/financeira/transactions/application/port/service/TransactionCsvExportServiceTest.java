@@ -58,7 +58,7 @@ class TransactionCsvExportServiceTest {
                 "\uFEFFdata;tipo;categoria;descricao;valor (R$);status;motivo_rejeicao\r\n"
         ));
 
-        assertTrue(csv.matches("(?s).*\"\\d{2}-\\d{2}-\\d{4}\";.*"));
+        assertTrue(csv.matches("(?s).*\"\\d{4}-\\d{2}-\\d{2}\";.*"));
 
         assertTrue(csv.contains(
                 ";\"PURCHASE\";\"Alimentação\";\"Compra no mercado\";25,50;\"APPROVED\";"

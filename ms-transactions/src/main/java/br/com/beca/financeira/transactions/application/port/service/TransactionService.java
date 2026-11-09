@@ -5,6 +5,7 @@ import br.com.beca.financeira.transactions.application.port.out.ExchangeRatePort
 import br.com.beca.financeira.transactions.application.port.out.TransactionRepositoryPort;
 import br.com.beca.financeira.transactions.domain.Transaction;
 import br.com.beca.financeira.transactions.domain.TransactionDomainException;
+import br.com.beca.financeira.transactions.domain.TransactionStatus;
 import br.com.beca.financeira.transactions.domain.TransactionType;
 import org.springframework.stereotype.Service;
 import br.com.beca.financeira.transactions.application.port.out.AccountLimitsPort;
@@ -48,17 +49,19 @@ public class TransactionService implements TransactionUseCase {
 
         registerLatestAvailableExchangeRates(transaction);
 
+        AccountLimitsPort.AccountLimits senderAccount =
+                accountLimitsPort.findByUserId(userId);
+
+        String rejectionReason = null;
+
         if (type == TransactionType.WITHDRAW
                 || type == TransactionType.TRANSFER
                 || type == TransactionType.PURCHASE) {
-            AccountLimitsPort.AccountLimits account =
-                    accountLimitsPort.findByUserId(userId);
 
-            String rejectionReason =
-                    transaction.validateBalanceAndTransactionLimit(
-                            account.balance(),
-                            account.perTransactionLimit()
-                    );
+            rejectionReason = transaction.validateBalanceAndTransactionLimit(
+                    senderAccount.balance(),
+                    senderAccount.perTransactionLimit()
+            );
 
             if (rejectionReason == null) {
                 LocalDate today = LocalDate.now();
@@ -72,23 +75,103 @@ public class TransactionService implements TransactionUseCase {
 
                 rejectionReason = transaction.validateDailyLimit(
                         spentToday,
-                        account.dailyLimit()
+                        senderAccount.dailyLimit()
+                );
+            }
+        }
+
+        AccountLimitsPort.AccountLimits recipientAccount = null;
+
+        if (rejectionReason == null && type == TransactionType.TRANSFER) {
+            recipientAccount = accountLimitsPort.findByUserId(destinationUserId);
+        }
+
+        if (rejectionReason != null) {
+            transaction.reject(rejectionReason);
+            return transactionRepositoryPort.save(transaction);
+        }
+
+        boolean recipientUpdateAttempted = false;
+        boolean senderUpdateAttempted = false;
+
+        try {
+            // Atualiza primeiro o destinatário para não debitar o remetente
+            // se o crédito do destinatário falhar.
+            if (type == TransactionType.TRANSFER) {
+                recipientUpdateAttempted = true;
+                accountLimitsPort.updateBalance(
+                        destinationUserId,
+                        recipientAccount.balance().add(amount)
                 );
             }
 
-            if (rejectionReason != null) {
-                transaction.reject(rejectionReason);
-            } else {
-                transaction.approve();
+            BigDecimal newSenderBalance = type == TransactionType.DEPOSIT
+                    ? senderAccount.balance().add(amount)
+                    : senderAccount.balance().subtract(amount);
+
+            senderUpdateAttempted = true;
+            accountLimitsPort.updateBalance(userId, newSenderBalance);
+
+        } catch (AccountLimitsUnavailableException exception) {
+            String failureReason =
+                    "Não foi possível atualizar os saldos na API de contas; transação rejeitada.";
+
+            boolean rollbackFailed = false;
+
+            if (senderUpdateAttempted) {
+                try {
+                    accountLimitsPort.updateBalance(userId, senderAccount.balance());
+                } catch (AccountLimitsUnavailableException rollbackException) {
+                    rollbackFailed = true;
+                }
             }
+
+            if (recipientUpdateAttempted) {
+                try {
+                    accountLimitsPort.updateBalance(
+                            destinationUserId,
+                            recipientAccount.balance()
+                    );
+                } catch (AccountLimitsUnavailableException rollbackException) {
+                    rollbackFailed = true;
+                }
+            }
+
+            if (rollbackFailed) {
+                failureReason =
+                        "Falha ao atualizar e restaurar os saldos na API de contas; "
+                                + "é necessária conferência manual.";
+            }
+
+            transaction.reject(failureReason);
+            return transactionRepositoryPort.save(transaction);
         }
 
-        if (type == TransactionType.DEPOSIT) {
-            transaction.approve();
+        transaction.approve();
+        Transaction savedTransaction = transactionRepositoryPort.save(transaction);
+
+        if (type == TransactionType.TRANSFER) {
+            Transaction receivedCredit = new Transaction(
+                    destinationUserId,
+                    "Transferência recebida do usuário " + userId,
+                    amount,
+                    TransactionType.DEPOSIT,
+                    null,
+                    null
+            );
+
+            receivedCredit.registerExchangeRates(
+                    savedTransaction.getUsdRate(),
+                    savedTransaction.getUsdQuoteDate(),
+                    savedTransaction.getEurRate(),
+                    savedTransaction.getEurQuoteDate()
+            );
+
+            receivedCredit.approve();
+            transactionRepositoryPort.save(receivedCredit);
         }
 
-
-        return transactionRepositoryPort.save(transaction);
+        return savedTransaction;
     }
 
     private void registerLatestAvailableExchangeRates(Transaction transaction) {

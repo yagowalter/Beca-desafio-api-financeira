@@ -11,6 +11,7 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @Component
@@ -20,6 +21,16 @@ public class AccountLimitsAdapter implements AccountLimitsPort {
 
     @Override
     public AccountLimitsPort.AccountLimits findByUserId(Long userId) {
+        AccountLimitsResponse account = findAccountResponseByUserId(userId);
+
+        return new AccountLimitsPort.AccountLimits(
+                account.getBalance(),
+                account.getDailyLimit(),
+                account.getPerTransactionLimit()
+        );
+    }
+
+    private AccountLimitsResponse findAccountResponseByUserId(Long userId) {
         List<AccountLimitsResponse> accounts;
 
         try {
@@ -45,13 +56,32 @@ public class AccountLimitsAdapter implements AccountLimitsPort {
             );
         }
 
-        AccountLimitsResponse account = accounts.get(0);
+        return accounts.get(0);
+    }
 
-        return new AccountLimitsPort.AccountLimits(
-                account.getBalance(),
-                account.getDailyLimit(),
-                account.getPerTransactionLimit()
-        );
+    @Override
+    public void updateBalance(Long userId, BigDecimal newBalance) {
+        AccountLimitsResponse current = findAccountResponseByUserId(userId);
+
+        AccountLimitsResponse updateAccount = new AccountLimitsResponse();
+        updateAccount.setUserId(userId);
+        updateAccount.setBalance(newBalance);
+        updateAccount.setDailyLimit(current.getDailyLimit());
+        updateAccount.setPerTransactionLimit(current.getPerTransactionLimit());
+
+        try {
+            restClient.put()
+                    .uri(accountsUrl + "/{accountId}", current.getId())
+                    .body(updateAccount)
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (RestClientException exception) {
+            throw new AccountLimitsUnavailableException(
+                    "Não foi possível atualizar o saldo da conta",
+                    exception
+            );
+        }
+
     }
 
     public AccountLimitsAdapter(
