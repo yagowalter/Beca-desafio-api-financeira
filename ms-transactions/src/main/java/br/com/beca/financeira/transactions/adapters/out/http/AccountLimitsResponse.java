@@ -7,8 +7,17 @@ public class AccountLimitsResponse {
     private BigDecimal balance;
     private BigDecimal dailyLimit;
     private BigDecimal perTransactionLimit;
+    private String id;
 
     public AccountLimitsResponse() {
+    }
+
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
     }
 
     public Long getUserId() {

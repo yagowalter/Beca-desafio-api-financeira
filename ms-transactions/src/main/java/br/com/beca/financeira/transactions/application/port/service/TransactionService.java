@@ -88,51 +88,87 @@ public class TransactionService implements TransactionUseCase {
 
         if (rejectionReason != null) {
             transaction.reject(rejectionReason);
-        } else {
-            transaction.approve();
+            return transactionRepositoryPort.save(transaction);
         }
 
-        Transaction savedTransaction = transactionRepositoryPort.save(transaction);
+        boolean recipientUpdateAttempted = false;
+        boolean senderUpdateAttempted = false;
 
-        if (savedTransaction.getStatus() == TransactionStatus.APPROVED) {
-            BigDecimal newSenderBalance;
-
-            if (type == TransactionType.DEPOSIT) {
-                newSenderBalance = senderAccount.balance().add(amount);
-            } else {
-                newSenderBalance = senderAccount.balance().subtract(amount);
-            }
-
-            accountLimitsPort.updateBalance(userId, newSenderBalance);
-
+        try {
+            // Atualiza primeiro o destinatário para não debitar o remetente
+            // se o crédito do destinatário falhar.
             if (type == TransactionType.TRANSFER) {
-                BigDecimal newRecipientBalance =
-                        recipientAccount.balance().add(amount);
-
+                recipientUpdateAttempted = true;
                 accountLimitsPort.updateBalance(
                         destinationUserId,
-                        newRecipientBalance
+                        recipientAccount.balance().add(amount)
                 );
-
-                Transaction receivedCredit = new Transaction(
-                        destinationUserId,
-                        "Transferência recebida do usuário " + userId,
-                        amount,
-                        TransactionType.DEPOSIT,
-                        null,
-                        null
-                );
-
-                receivedCredit.registerExchangeRates(
-                        savedTransaction.getUsdRate(),
-                        savedTransaction.getUsdQuoteDate(),
-                        savedTransaction.getEurRate(),
-                        savedTransaction.getEurQuoteDate()
-                );
-
-                receivedCredit.approve();
-                transactionRepositoryPort.save(receivedCredit);
             }
+
+            BigDecimal newSenderBalance = type == TransactionType.DEPOSIT
+                    ? senderAccount.balance().add(amount)
+                    : senderAccount.balance().subtract(amount);
+
+            senderUpdateAttempted = true;
+            accountLimitsPort.updateBalance(userId, newSenderBalance);
+
+        } catch (AccountLimitsUnavailableException exception) {
+            String failureReason =
+                    "Não foi possível atualizar os saldos na API de contas; transação rejeitada.";
+
+            boolean rollbackFailed = false;
+
+            if (senderUpdateAttempted) {
+                try {
+                    accountLimitsPort.updateBalance(userId, senderAccount.balance());
+                } catch (AccountLimitsUnavailableException rollbackException) {
+                    rollbackFailed = true;
+                }
+            }
+
+            if (recipientUpdateAttempted) {
+                try {
+                    accountLimitsPort.updateBalance(
+                            destinationUserId,
+                            recipientAccount.balance()
+                    );
+                } catch (AccountLimitsUnavailableException rollbackException) {
+                    rollbackFailed = true;
+                }
+            }
+
+            if (rollbackFailed) {
+                failureReason =
+                        "Falha ao atualizar e restaurar os saldos na API de contas; "
+                                + "é necessária conferência manual.";
+            }
+
+            transaction.reject(failureReason);
+            return transactionRepositoryPort.save(transaction);
+        }
+
+        transaction.approve();
+        Transaction savedTransaction = transactionRepositoryPort.save(transaction);
+
+        if (type == TransactionType.TRANSFER) {
+            Transaction receivedCredit = new Transaction(
+                    destinationUserId,
+                    "Transferência recebida do usuário " + userId,
+                    amount,
+                    TransactionType.DEPOSIT,
+                    null,
+                    null
+            );
+
+            receivedCredit.registerExchangeRates(
+                    savedTransaction.getUsdRate(),
+                    savedTransaction.getUsdQuoteDate(),
+                    savedTransaction.getEurRate(),
+                    savedTransaction.getEurQuoteDate()
+            );
+
+            receivedCredit.approve();
+            transactionRepositoryPort.save(receivedCredit);
         }
 
         return savedTransaction;

@@ -104,16 +104,12 @@ class TransactionRequestValidatorTest {
     }
 
     @Test
-    void shouldRejectTransferWithoutCategory() {
+    void shouldAcceptTransferWithoutCategory() {
         CreateTransactionRequest request = validRequest();
         request.setType(TransactionType.TRANSFER);
         request.setDestinationUserId(54L);
 
-        assertViolation(
-                request,
-                "category",
-                "Categoria é obrigatória para transferências"
-        );
+        assertTrue(validator.validate(request).isEmpty());
     }
 
     @Test

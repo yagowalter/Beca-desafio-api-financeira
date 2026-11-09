@@ -21,6 +21,16 @@ public class AccountLimitsAdapter implements AccountLimitsPort {
 
     @Override
     public AccountLimitsPort.AccountLimits findByUserId(Long userId) {
+        AccountLimitsResponse account = findAccountResponseByUserId(userId);
+
+        return new AccountLimitsPort.AccountLimits(
+                account.getBalance(),
+                account.getDailyLimit(),
+                account.getPerTransactionLimit()
+        );
+    }
+
+    private AccountLimitsResponse findAccountResponseByUserId(Long userId) {
         List<AccountLimitsResponse> accounts;
 
         try {
@@ -46,28 +56,22 @@ public class AccountLimitsAdapter implements AccountLimitsPort {
             );
         }
 
-        AccountLimitsResponse account = accounts.get(0);
-
-        return new AccountLimitsPort.AccountLimits(
-                account.getBalance(),
-                account.getDailyLimit(),
-                account.getPerTransactionLimit()
-        );
+        return accounts.get(0);
     }
 
     @Override
     public void updateBalance(Long userId, BigDecimal newBalance) {
-        AccountLimitsPort.AccountLimits current = findByUserId(userId);
+        AccountLimitsResponse current = findAccountResponseByUserId(userId);
 
         AccountLimitsResponse updateAccount = new AccountLimitsResponse();
         updateAccount.setUserId(userId);
         updateAccount.setBalance(newBalance);
-        updateAccount.setDailyLimit(current.dailyLimit());
-        updateAccount.setPerTransactionLimit(current.perTransactionLimit());
+        updateAccount.setDailyLimit(current.getDailyLimit());
+        updateAccount.setPerTransactionLimit(current.getPerTransactionLimit());
 
         try {
             restClient.put()
-                    .uri(accountsUrl + "/{userId}", userId)
+                    .uri(accountsUrl + "/{accountId}", current.getId())
                     .body(updateAccount)
                     .retrieve()
                     .toBodilessEntity();

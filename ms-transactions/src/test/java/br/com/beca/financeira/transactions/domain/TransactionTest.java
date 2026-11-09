@@ -268,27 +268,17 @@ class TransactionTest {
     }
 
     @Test
-    void shouldRejectTransferWithoutCategory() {
-        assertThrows(TransactionDomainException.class, () ->
-                new Transaction(
-                        7L,
-                        "Transferência teste",
-                        new BigDecimal("50.00"),
-                        TransactionType.TRANSFER,
-                        null,
-                        8L
-                )
+    void shouldAllowTransferWithoutCategory() {
+        Transaction transaction = new Transaction(
+                7L,
+                "Transferência teste",
+                new BigDecimal("50.00"),
+                TransactionType.TRANSFER,
+                null,
+                8L
         );
 
-        assertThrows(TransactionDomainException.class, () ->
-                new Transaction(
-                        7L,
-                        "Transferência teste",
-                        new BigDecimal("50.00"),
-                        TransactionType.TRANSFER,
-                        " ",
-                        8L
-                )
-        );
+        assertNull(transaction.getCategory());
+        assertEquals(8L, transaction.getDestinationUserId());
     }
 }

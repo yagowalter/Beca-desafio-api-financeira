@@ -56,7 +56,7 @@ No projeto da MockAPI, abra o recurso `accounts` e copie a URL do endpoint. Conf
 MOCKAPI_ACCOUNTS_URL=https://seu-projeto.mockapi.io/accounts
 ```
 
-Cada usuário que consultar saldo ou fizer uma retirada, transferência ou compra precisa ter um registro correspondente no recurso `accounts`. Primeiro, cadastre o usuário no MS-Users e anote o `id` retornado. Use esse mesmo valor no campo `userId` da conta na MockAPI. O cadastro no MS-Users não cria automaticamente uma conta na MockAPI. Depósitos não consultam saldo nem limites na MockAPI.
+Cada usuário que consultar saldo ou registrar um depósito, retirada, transferência ou compra precisa ter um registro correspondente no recurso `accounts`. Primeiro, cadastre o usuário no MS-Users e anote o `id` retornado. Use esse mesmo valor no campo `userId` da conta na MockAPI. O cadastro no MS-Users não cria automaticamente uma conta na MockAPI. Depósitos atualizam o saldo, mas não passam pelas validações de saldo disponível e limites de saída.
 
 Exemplo de registro:
 
@@ -72,6 +72,10 @@ Exemplo de registro:
 ```
 
 O valor `"52"` é apenas ilustrativo: substitua-o pelo ID real retornado pelo MS-Users. Ao adicionar uma conta na MockAPI, preserve os registros existentes. Se não houver conta para o usuário autenticado, o MS-Transactions responde `404`; se a MockAPI estiver indisponível, responde `503`.
+
+Quando uma operação aprovada precisa alterar saldos, o MS-Transactions atualiza a MockAPI antes de aprovar e salvar a transação. Se um PUT falhar, a transação é registrada como `REJECTED` com um motivo. Em uma transferência, o serviço tenta restaurar os saldos que já tentou atualizar e só registra o crédito no histórico do destinatário quando as atualizações dos dois saldos funcionam.
+
+Se também falhar a tentativa de restauração, a transação continua registrada como `REJECTED`, mas os saldos precisam de conferência manual na MockAPI.
 
 No Docker Compose, o MS-Users é acessado pelo nome do serviço `ms-users`. Por isso, o Compose configura `MS_USERS_BASE_URL` como `http://ms-users:8080`.
 
@@ -263,9 +267,9 @@ O relatório HTML do JaCoCo é gerado em:
 
 **Última execução verificada (`.\mvnw.cmd clean verify`):**
 
-- Linhas cobertas: **524 de 558 (93,9%)**.
+- Linhas cobertas: **538 de 577 (93,2%)**.
 - Instruções: **93%**.
-- Branches: **84%**.
+- Branches: **85%**.
 - Meta mínima: **80% de cobertura de linhas** — cumprida.
 
 ### Observações
